@@ -1,0 +1,45 @@
+{
+  "name": "ep_openid-client",
+  "version": "0.0.1",
+  "description": "OpenID Connect plugin for etherpad-lite",
+  "repository": "https://github.com/stefanor/ep_openid-client",
+  "author": "Stefano Rivera <stefano@rivera.za.net>",
+  "license": "MIT",
+  "private": false,
+  "keywords": [
+    "etherpad",
+    "plugin",
+    "ep",
+    "oidc",
+    "OpenID Connect"
+  ],
+  "dependencies": {
+    "openid-client": "^3.15.9"
+  },
+  "devDependencies": {
+    "eslint": "^7.6.0",
+    "prettier": "^2.0.5"
+  },
+  "eslintConfig": {
+    "root": true,
+    "env": {
+      "es6": true,
+      "node": true
+    },
+    "parserOptions": {
+      "ecmaVersion": 8
+    },
+    "extends": [
+      "eslint:recommended"
+    ]
+  },
+  "prettier": {
+    "bracketSpacing": false,
+    "trailingComma": "es5",
+    "singleQuote": true
+  },
+  "scripts": {
+    "lint": "eslint *.js static/js/*.js",
+    "tidy": "prettier --write *.js static/js/*.js"
+  }
+}
