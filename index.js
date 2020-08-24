@@ -44,6 +44,7 @@ function authCallback(req, res, next) {
     const user_name = userinfo[settings.displayname_claim];
     oidc_session.sub = sub;
     session.user = {
+      username: sub,
       name: user_name,
       is_admin: false,
     };
