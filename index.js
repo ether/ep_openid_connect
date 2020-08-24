@@ -9,6 +9,7 @@ const authorManager = require('ep_etherpad-lite/node/db/AuthorManager');
 
 const pluginName = 'ep_openid_connect';
 const logger = log4js.getLogger(pluginName);
+let globalSettings;
 const settings = {};
 let oidc_client = null;
 
@@ -41,13 +42,11 @@ function authCallback(req, res, next) {
 
     const userinfo = await oidc_client.userinfo(tokenset);
     const sub = userinfo.sub;
-    const user_name = userinfo[settings.displayname_claim];
     oidc_session.sub = sub;
-    session.user = {
-      username: sub,
-      name: user_name,
-      is_admin: false,
-    };
+    if (globalSettings.users[sub] == null) globalSettings.users[sub] = {};
+    session.user = globalSettings.users[sub];
+    session.user.username = sub;
+    session.user.name = userinfo[settings.displayname_claim] || session.user.name;
 
     res.redirect(oidc_session.next || '/');
     // Defer deletion of state until success so that the user can reload the page to retry after a
@@ -63,7 +62,8 @@ async function setUsername(token, username) {
   authorManager.setAuthorName(author, username);
 }
 
-exports.loadSettings = (hook_name, {settings: globalSettings}) => {
+exports.loadSettings = (hook_name, {settings: _globalSettings}) => {
+  globalSettings = _globalSettings;
   const my_settings = globalSettings[pluginName];
 
   if (!my_settings) logger.error(`Expecting an ${pluginName} block in settings.`);

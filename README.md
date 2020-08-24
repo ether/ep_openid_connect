@@ -39,6 +39,36 @@ this structure:
 * `permit_displayname_change` (optional; defaults to `false`): Whether users may
   change their displayed name.
 
+## Interaction with the `users` Setting
+
+When a user authenticates, the value of the `sub` (subject) claim is used as the
+user's username in Etherpad. (The `sub` claim is the identity provider's unique
+identifier for the user.) Many identity providers (such as GitLab) identify
+users by a numeric user ID, so the `sub` claim (and thus the Etherpad username)
+will probably look something like "5374".
+
+All values associated with that username in the `settings.json` `users` object
+are applied to the user, including `is_admin`, `readOnly`, and `canCreate`.
+
+For example, if you want the user identified by "5374" to be a read-only user,
+you would add the following to your `settings.json`:
+
+```json
+  "users": {
+    "5374": {
+      "readOnly": true
+    }
+  },
+```
+
+## Interaction with Authorization Plugins
+
+This plugin sets `req.session.user` to the user's settings object from
+`settings.json` and sets `req.session.user.username` to the user's username (the
+`sub` claim). Etherpad's built-in HTTP basic authentication does the same thing,
+so any authorization plugin designed to work with Etherpad's built-in
+authentication should work with this plugin.
+
 ## Support
 
 Currently only tested against GitLab instances.
