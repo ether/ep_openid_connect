@@ -34,7 +34,7 @@ async function authCallback(req, res) {
 
   const params = oidc_client.callbackParams(req);
   const {session} = req;
-  const oidc_session = req.session[pluginName] || {};
+  const oidc_session = session[pluginName] || {};
   const {nonce, state} = oidc_session;
   delete oidc_session.nonce;
   delete oidc_session.state;
