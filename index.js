@@ -87,14 +87,9 @@ exports.clientVars = (hook_name, context, callback) => {
 
 exports.expressCreateServer = (hook_name, {app}) => {
   logger.debug('Configuring auth routes');
-  app.get('/logout', (req, res) =>
-    req.session.destroy(() => {
-      req.logout();
-      res.redirect('/');
-    })
-  );
   app.get('/auth/callback', authCallback);
   app.get('/auth/failure', (req, res) => res.send('<em>Authentication Failed</em>'));
+  app.get('/logout', (req, res) => req.session.destroy(() => res.redirect('/')));
 };
 
 exports.authenticate = (hook_name, {req, res, next}) => {
