@@ -34,20 +34,16 @@ function authCallback(req, res, next) {
   logger.debug('Processing auth callback');
   (async () => {
     const params = oidc_client.callbackParams(req);
-    const {session} = req;
-    const oidc_session = session[pluginName] || {};
+    const oidc_session = req.session[pluginName] || {};
     const {authParams} = oidc_session;
     if (authParams == null) throw new Error('no authentication paramters found in session state');
     const tokenset = await oidc_client.callback(redirectURL(), params, authParams);
-
-    const userinfo = await oidc_client.userinfo(tokenset);
-    const sub = userinfo.sub;
-    oidc_session.sub = sub;
-    if (globalSettings.users[sub] == null) globalSettings.users[sub] = {};
-    session.user = globalSettings.users[sub];
-    session.user.username = sub;
-    session.user.name = userinfo[settings.displayname_claim] || session.user.name;
-
+    oidc_session.userinfo = await oidc_client.userinfo(tokenset);
+    // The user has successfully authenticated, but don't set req.session.user here -- do it in the
+    // authenticate hook so that Etherpad can log the authentication success. However, DO "log out"
+    // the previous user to force the authenticate hook to run in case the user was already
+    // authenticated as someone else.
+    delete req.session.user;
     res.redirect(oidc_session.next || '/');
     // Defer deletion of state until success so that the user can reload the page to retry after a
     // transient backchannel failure.
@@ -92,15 +88,21 @@ exports.expressCreateServer = (hook_name, {app}) => {
 exports.authenticate = (hook_name, {req, res, next}, cb) => {
   logger.debug('authenticate hook for', req.url);
   if (req.path.startsWith('/auth/')) return next();
-  if (!req.session[pluginName]) req.session[pluginName] = {};
-  const oidc_session = req.session[pluginName];
-  if (oidc_session.sub == null) {
+  const {session} = req;
+  if (!session[pluginName]) session[pluginName] = {};
+  const oidc_session = session[pluginName];
+  const {userinfo: {sub} = {}} = oidc_session;
+  if (sub == null) {
     oidc_session.next = req.url;
     oidc_session.authParams = {nonce: generators.nonce(), state: generators.state()};
     // Skip further Etherpad auth processing and redirect the user to the IDP's authorization URL.
     return res.redirect(oidc_client.authorizationUrl(oidc_session.authParams));
   }
   // Successfully authenticated.
+  if (globalSettings.users[sub] == null) globalSettings.users[sub] = {};
+  session.user = globalSettings.users[sub];
+  session.user.username = sub;
+  session.user.name = oidc_session.userinfo[settings.displayname_claim] || session.user.name;
   return cb([true]);
 };
 
