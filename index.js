@@ -89,15 +89,19 @@ exports.expressCreateServer = (hook_name, {app}) => {
   app.get('/logout', (req, res) => req.session.destroy(() => res.redirect(settings.base_url)));
 };
 
-exports.authenticate = (hook_name, {req, res, next}) => {
+exports.authenticate = (hook_name, {req, res, next}, cb) => {
   logger.debug('authenticate hook for', req.url);
+  if (req.path.startsWith('/auth/')) return next();
   if (!req.session[pluginName]) req.session[pluginName] = {};
   const session = req.session[pluginName];
-
-  if (session.sub || req.path.startsWith('/auth/')) return next();
-  session.next = req.url;
-  session.authParams = {nonce: generators.nonce(), state: generators.state()};
-  return res.redirect(oidc_client.authorizationUrl(session.authParams));
+  if (session.sub == null) {
+    session.next = req.url;
+    session.authParams = {nonce: generators.nonce(), state: generators.state()};
+    // Skip further Etherpad auth processing and redirect the user to the IDP's authorization URL.
+    return res.redirect(oidc_client.authorizationUrl(session.authParams));
+  }
+  // Successfully authenticated.
+  return cb([true]);
 };
 
 exports.handleMessage = async (hook_name, {message, client}) => {
