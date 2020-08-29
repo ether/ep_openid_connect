@@ -85,9 +85,8 @@ exports.expressCreateServer = (hook_name, {app}) => {
   app.get('/logout', (req, res) => req.session.destroy(() => res.redirect(settings.base_url)));
 };
 
-exports.authenticate = (hook_name, {req, res, next}, cb) => {
+exports.authenticate = (hook_name, {req, res}, cb) => {
   logger.debug('authenticate hook for', req.url);
-  if (req.path.startsWith('/auth/')) return next();
   const {session} = req;
   if (!session[pluginName]) session[pluginName] = {};
   const oidc_session = session[pluginName];
@@ -131,4 +130,9 @@ exports.handleMessage = async (hook_name, {message, client}) => {
     }
   }
   return approve;
+};
+
+exports.preAuthorize = (hook_name, {req}, cb) => {
+  if (req.path.startsWith('/auth/')) return cb([true]);
+  return cb([]);
 };
