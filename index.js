@@ -9,7 +9,6 @@ const authorManager = require('ep_etherpad-lite/node/db/AuthorManager');
 
 const pluginName = 'ep_openid_connect';
 const logger = log4js.getLogger(pluginName);
-let globalSettings;
 const settings = {};
 let oidc_client = null;
 
@@ -58,8 +57,7 @@ async function setUsername(token, username) {
   authorManager.setAuthorName(author, username);
 }
 
-exports.loadSettings = (hook_name, {settings: _globalSettings}) => {
-  globalSettings = _globalSettings;
+exports.loadSettings = (hook_name, {settings: globalSettings}) => {
   const my_settings = globalSettings[pluginName];
 
   if (!my_settings) logger.error(`Expecting an ${pluginName} block in settings.`);
@@ -85,7 +83,7 @@ exports.expressCreateServer = (hook_name, {app}) => {
   app.get('/logout', (req, res) => req.session.destroy(() => res.redirect(settings.base_url)));
 };
 
-exports.authenticate = (hook_name, {req, res}, cb) => {
+exports.authenticate = (hook_name, {req, res, users}, cb) => {
   logger.debug('authenticate hook for', req.url);
   const {session} = req;
   if (!session[pluginName]) session[pluginName] = {};
@@ -98,8 +96,8 @@ exports.authenticate = (hook_name, {req, res}, cb) => {
     return res.redirect(oidc_client.authorizationUrl(oidc_session.authParams));
   }
   // Successfully authenticated.
-  if (globalSettings.users[sub] == null) globalSettings.users[sub] = {};
-  session.user = globalSettings.users[sub];
+  if (users[sub] == null) users[sub] = {};
+  session.user = users[sub];
   session.user.username = sub;
   session.user.name = oidc_session.userinfo[settings.displayname_claim] || session.user.name;
   return cb([true]);
