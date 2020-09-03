@@ -155,7 +155,7 @@ exports.handleMessage = (hook_name, {message, client}, cb) => {
   if (name) {
     if (message.type == 'CLIENT_READY') {
       console.debug(
-        'ep_openid-client: CLIENT_READY %s: Setting setting username for token %s to %s',
+        'ep_openid-client: CLIENT_READY %s: Setting username for token %s to %s',
         client.id,
         message.token,
         name
