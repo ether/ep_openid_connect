@@ -29,34 +29,29 @@ async function createClient() {
   logger.info('Client discovery complete. Configured.');
 }
 
-async function authCallback(req, res) {
+function authCallback(req, res, next) {
   logger.debug('Processing auth callback');
-
-  const params = oidc_client.callbackParams(req);
-  const {session} = req;
-  const oidc_session = session[pluginName] || {};
-  const {nonce, state} = oidc_session;
-  delete oidc_session.nonce;
-  delete oidc_session.state;
-  let userinfo;
-  try {
+  (async () => {
+    const params = oidc_client.callbackParams(req);
+    const {session} = req;
+    const oidc_session = session[pluginName] || {};
+    const {nonce, state} = oidc_session;
+    delete oidc_session.nonce;
+    delete oidc_session.state;
     const tokenset = await oidc_client.callback(redirectURL(), params, {nonce, state});
-    userinfo = await oidc_client.userinfo(tokenset);
-  } catch (e) {
-    logger.log('Authentication failed', e);
-    return res.send('Authentication failed');
-  }
 
-  const sub = userinfo.sub;
-  const user_name = userinfo[settings.displayname_claim];
-  oidc_session.sub = sub;
-  session.user = {
-    name: user_name,
-    is_admin: false,
-  };
+    const userinfo = await oidc_client.userinfo(tokenset);
+    const sub = userinfo.sub;
+    const user_name = userinfo[settings.displayname_claim];
+    oidc_session.sub = sub;
+    session.user = {
+      name: user_name,
+      is_admin: false,
+    };
 
-  res.redirect(oidc_session.next || '/');
-  delete oidc_session.next;
+    res.redirect(oidc_session.next || '/');
+    delete oidc_session.next;
+  })().catch(next);
 }
 
 async function setUsername(token, username) {
