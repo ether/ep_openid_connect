@@ -55,7 +55,6 @@ async function authCallback(req, res) {
     is_admin: false,
   };
 
-  authorManager.createAuthorIfNotExistsFor(sub, user_name);
   res.redirect(oidc_session.next || '/');
   delete oidc_session.next;
 }
