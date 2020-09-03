@@ -99,11 +99,11 @@ exports.authenticate = (hook_name, {req, res, next}) => {
   return res.redirect(oidc_client.authorizationUrl(session.authParams));
 };
 
-exports.handleMessage = (hook_name, {message, client}, cb) => {
+exports.handleMessage = async (hook_name, {message, client}) => {
   logger.debug('handleMessage hook', message);
 
-  const approve = () => cb([message]);
-  const deny = () => cb([null]);
+  const approve = [message];
+  const deny = [null];
 
   const {session} = client.client.request;
   let name;
@@ -114,14 +114,14 @@ exports.handleMessage = (hook_name, {message, client}, cb) => {
       logger.debug(
         `CLIENT_READY ${client.id}: Setting username for token ${message.token} to ${name}`
       );
-      setUsername(message.token, name).finally(approve);
-      return;
+      await setUsername(message.token, name);
+      return approve;
     } else if (message.type == 'COLLABROOM' && message.data.type == 'USERINFO_UPDATE') {
       if (message.data.userInfo.name != name && !settings.permit_displayname_change) {
         logger.info('Rejecting name change');
-        return deny();
+        return deny;
       }
     }
   }
-  return approve();
+  return approve;
 };
