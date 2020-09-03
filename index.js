@@ -36,8 +36,6 @@ function authCallback(req, res, next) {
     const {session} = req;
     const oidc_session = session[pluginName] || {};
     const {nonce, state} = oidc_session;
-    delete oidc_session.nonce;
-    delete oidc_session.state;
     const tokenset = await oidc_client.callback(redirectURL(), params, {nonce, state});
 
     const userinfo = await oidc_client.userinfo(tokenset);
@@ -50,6 +48,10 @@ function authCallback(req, res, next) {
     };
 
     res.redirect(oidc_session.next || '/');
+    // Defer deletion of state until success so that the user can reload the page to retry after a
+    // transient backchannel failure.
+    delete oidc_session.nonce;
+    delete oidc_session.state;
     delete oidc_session.next;
   })().catch(next);
 }
