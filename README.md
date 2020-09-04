@@ -38,6 +38,12 @@ this structure:
   response types.
 * `permit_displayname_change` (optional; defaults to `false`): Whether users may
   change their displayed name.
+* `prohibited_usernames` (optional; defaults to `['admin', 'guest']`): List of
+  strings that will trigger an authentication error if any match the `sub`
+  (subject) claim from the identity provider. Use this to avoid conflicts with
+  the users in the `users` setting and to avoid conflicts with other plugins
+  (such as
+  [ep\_readonly\_guest](https://github.com/ether/ep_readonly_guest#readme)).
 
 ## Interaction with the `users` Setting
 
@@ -60,6 +66,20 @@ you would add the following to your `settings.json`:
     }
   },
 ```
+
+To avoid unintentionally applying values to users authenticated via this plugin,
+you can use the `prohibited_usernames` settings to force an authentication error
+if the `sub` claim happens to match. This is useful for preventing a malicious
+identity provider from gaining admin access to your Etherpad instance.
+
+## Interaction with the ep\_readonly\_guest Plugin
+
+The [ep\_readonly\_guest
+plugin](https://github.com/ether/ep_readonly_guest#readme) creates a user that
+is used for all guest accesses. It is recommended you add the username you chose
+for the guest user to the `prohibited_usernames` setting. If the identity
+provider ever uses that username in the `sub` claim, you will get an obvious
+error instead of a mysterious inability to edit pads.
 
 ## Interaction with Etherpad's Built-in HTTP Basic Authentication
 

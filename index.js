@@ -35,7 +35,11 @@ function authCallback(req, res, next) {
     const {authParams} = oidc_session;
     if (authParams == null) throw new Error('no authentication paramters found in session state');
     const tokenset = await oidc_client.callback(endpointUrl('callback'), params, authParams);
-    oidc_session.userinfo = await oidc_client.userinfo(tokenset);
+    const userinfo = await oidc_client.userinfo(tokenset);
+    if (settings.prohibited_usernames.indexOf(userinfo.sub) !== -1) {
+      throw new Error(`authenticated user's 'sub' claim (${userinfo.sub}) is not permitted`);
+    }
+    oidc_session.userinfo = userinfo;
     // The user has successfully authenticated, but don't set req.session.user here -- do it in the
     // authenticate hook so that Etherpad can log the authentication success. However, DO "log out"
     // the previous user to force the authenticate hook to run in case the user was already
@@ -68,6 +72,7 @@ exports.loadSettings = (hook_name, {settings: globalSettings}) => {
   settings.displayname_claim = settings.displayname_claim || 'name';
   settings.response_types = settings.response_types || ['code'];
   settings.permit_displayname_change = settings.permit_displayname_change || false;
+  settings.prohibited_usernames = settings.prohibited_usernames || ['admin', 'guest'];
   createClient();
 };
 
