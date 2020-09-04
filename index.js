@@ -88,7 +88,7 @@ exports.expressCreateServer = (hook_name, {app}) => {
     oidc_session.authParams = {nonce: generators.nonce(), state: generators.state()};
     res.redirect(oidc_client.authorizationUrl(oidc_session.authParams));
   });
-  app.get('/logout', (req, res) => req.session.destroy(() => res.redirect(settings.base_url)));
+  app.get('/auth/logout', (req, res) => req.session.destroy(() => res.redirect(settings.base_url)));
 };
 
 exports.authenticate = (hook_name, {req, res, users}, cb) => {
