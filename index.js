@@ -12,14 +12,12 @@ const logger = log4js.getLogger(pluginName);
 const settings = {};
 let oidc_client = null;
 
-function redirectURL() {
-  return new URL('auth/callback', settings.base_url).toString();
-}
+const endpointUrl = (endpoint) => new URL(`auth/${endpoint}`, settings.base_url).toString();
 
 async function createClient() {
   const issuer = await Issuer.discover(settings.issuer);
   const {client_id, client_secret, response_types} = settings;
-  const redirect_uris = [redirectURL()];
+  const redirect_uris = [endpointUrl('callback')];
   oidc_client = new issuer.Client({
     client_id,
     client_secret,
@@ -36,7 +34,7 @@ function authCallback(req, res, next) {
     const oidc_session = req.session[pluginName] || {};
     const {authParams} = oidc_session;
     if (authParams == null) throw new Error('no authentication paramters found in session state');
-    const tokenset = await oidc_client.callback(redirectURL(), params, authParams);
+    const tokenset = await oidc_client.callback(endpointUrl('callback'), params, authParams);
     oidc_session.userinfo = await oidc_client.userinfo(tokenset);
     // The user has successfully authenticated, but don't set req.session.user here -- do it in the
     // authenticate hook so that Etherpad can log the authentication success. However, DO "log out"
@@ -82,6 +80,14 @@ exports.expressCreateServer = (hook_name, {app}) => {
   logger.debug('Configuring auth routes');
   app.get('/auth/callback', authCallback);
   app.get('/auth/failure', (req, res) => res.send('<em>Authentication Failed</em>'));
+  app.get('/auth/login', (req, res, next) => {
+    logger.debug('Processing /auth/login request');
+    if (req.session[pluginName] == null) req.session[pluginName] = {};
+    const oidc_session = req.session[pluginName];
+    oidc_session.next = req.query.redirect_uri || settings.base_url;
+    oidc_session.authParams = {nonce: generators.nonce(), state: generators.state()};
+    res.redirect(oidc_client.authorizationUrl(oidc_session.authParams));
+  });
   app.get('/logout', (req, res) => req.session.destroy(() => res.redirect(settings.base_url)));
 };
 
@@ -92,16 +98,20 @@ exports.authenticate = (hook_name, {req, res, users}, cb) => {
   const oidc_session = session[pluginName];
   const {userinfo: {sub} = {}} = oidc_session;
   if (sub == null) {
-    oidc_session.next = req.url;
-    oidc_session.authParams = {nonce: generators.nonce(), state: generators.state()};
-    // Skip further Etherpad auth processing and redirect the user to the IDP's authorization URL.
-    return res.redirect(oidc_client.authorizationUrl(oidc_session.authParams));
+    // Authn failed. Let another plugin try to authenticate the user.
+    return cb([]);
   }
   // Successfully authenticated.
   if (users[sub] == null) users[sub] = {};
   session.user = users[sub];
   session.user.username = sub;
   session.user.name = oidc_session.userinfo[settings.displayname_claim] || session.user.name;
+  return cb([true]);
+};
+
+exports.authnFailure = (hookName, {req, res}, cb) => {
+  const url = new URL(req.url.substr(1), settings.base_url).toString();
+  res.redirect(`${endpointUrl('login')}?redirect_uri=${encodeURIComponent(url)}`);
   return cb([true]);
 };
 

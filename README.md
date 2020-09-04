@@ -61,6 +61,19 @@ you would add the following to your `settings.json`:
   },
 ```
 
+## Interaction with Etherpad's Built-in HTTP Basic Authentication
+
+If the user has not yet successfully authenticated, this plugin defers the
+access decision—it does not explicitly deny access. This causes Etherpad to fall
+back to another authentication plugin (if one is installed) or to the built-in
+HTTP basic authentication.
+
+Note: This plugin installs an authentication failure handler, so the user will
+not get a 401 error that causes the browser to prompt for a username and
+password for HTTP basic auth. To fall back to HTTP basic authentication, the
+user's browser must proactively set the `Authorization: Basic <credentials>`
+header.
+
 ## Interaction with Authorization Plugins
 
 This plugin sets `req.session.user` to the user's settings object from

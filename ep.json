@@ -7,6 +7,7 @@
       },
       "hooks": {
         "authenticate": "ep_openid_connect",
+        "authnFailure": "ep_openid_connect",
         "clientVars": "ep_openid_connect",
         "expressCreateServer": "ep_openid_connect",
         "handleMessage": "ep_openid_connect",
