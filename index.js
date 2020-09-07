@@ -41,7 +41,7 @@ function authCallback(req, res, next) {
     // the previous user to force the authenticate hook to run in case the user was already
     // authenticated as someone else.
     delete req.session.user;
-    res.redirect(oidc_session.next || oidc_settings.base_url);
+    res.redirect(oidc_session.next || settings.base_url);
     // Defer deletion of state until success so that the user can reload the page to retry after a
     // transient backchannel failure.
     delete oidc_session.authParams;
@@ -94,10 +94,12 @@ exports.expressCreateServer = (hook_name, {app}) => {
 exports.authenticate = (hook_name, {req, res, users}, cb) => {
   logger.debug('authenticate hook for', req.url);
   const {session} = req;
-  if (!session[pluginName]) session[pluginName] = {};
-  const oidc_session = session[pluginName];
-  const {userinfo: {sub} = {}} = oidc_session;
+  const {[pluginName]: {userinfo = {}} = {}} = session;
+  const {sub} = userinfo;
   if (sub == null) {
+    // Out of an abundance of caution, clear out the old state, nonce, and userinfo (if present) to
+    // force regeneration.
+    delete session[pluginName];
     // Authn failed. Let another plugin try to authenticate the user.
     return cb([]);
   }
@@ -105,7 +107,7 @@ exports.authenticate = (hook_name, {req, res, users}, cb) => {
   if (users[sub] == null) users[sub] = {};
   session.user = users[sub];
   session.user.username = sub;
-  session.user.name = oidc_session.userinfo[settings.displayname_claim] || session.user.name;
+  session.user.name = userinfo[settings.displayname_claim] || session.user.name;
   return cb([true]);
 };
 
