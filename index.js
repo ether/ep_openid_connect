@@ -124,10 +124,6 @@ exports.authnFailure = (hookName, {req, res}, cb) => {
 
 exports.handleMessage = async (hook_name, {message, client}) => {
   logger.debug('handleMessage hook', message);
-
-  const approve = [message];
-  const deny = [null];
-
   const {session} = client.client.request;
   let name;
   if ('user' in session && session.user.name) name = session.user.name;
@@ -138,15 +134,12 @@ exports.handleMessage = async (hook_name, {message, client}) => {
         `CLIENT_READY ${client.id}: Setting username for token ${message.token} to ${name}`
       );
       await setUsername(message.token, name);
-      return approve;
     } else if (message.type == 'COLLABROOM' && message.data.type == 'USERINFO_UPDATE') {
       if (message.data.userInfo.name != name && !settings.permit_displayname_change) {
-        logger.info('Rejecting name change');
-        return deny;
+        message.data.userInfo.name = name;
       }
     }
   }
-  return approve;
 };
 
 exports.preAuthorize = (hook_name, {req}, cb) => {
