@@ -6,11 +6,11 @@
         "postToolbarInit": "ep_openid_connect/static/js/client"
       },
       "hooks": {
-        "authenticate": "ep_openid_connect/server.js",
-        "clientVars": "ep_openid_connect/server.js",
-        "expressCreateServer": "ep_openid_connect/server.js",
-        "handleMessage": "ep_openid_connect/server.js",
-        "loadSettings": "ep_openid_connect/server.js"
+        "authenticate": "ep_openid_connect",
+        "clientVars": "ep_openid_connect",
+        "expressCreateServer": "ep_openid_connect",
+        "handleMessage": "ep_openid_connect",
+        "loadSettings": "ep_openid_connect"
       }
     }
   ]
