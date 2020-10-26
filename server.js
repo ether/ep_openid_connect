@@ -5,7 +5,8 @@ const {URL} = require('url');
 const {Issuer, generators} = require('openid-client');
 const authorManager = require('ep_etherpad-lite/node/db/AuthorManager');
 
-const logger = log4js.getLogger('ep_openid-client');
+const pluginName = 'ep_openid_connect';
+const logger = log4js.getLogger(pluginName);
 const oidc_settings = {};
 let oidc_client = null;
 
@@ -31,7 +32,7 @@ async function authCallback(req, res) {
 
   const params = oidc_client.callbackParams(req);
   const {session} = req;
-  const oidc_session = req.session['ep_openid-client'] || {};
+  const oidc_session = req.session[pluginName] || {};
   const {nonce, state} = oidc_session;
   delete oidc_session.nonce;
   delete oidc_session.state;
@@ -64,11 +65,11 @@ async function setUsername(token, username) {
 }
 
 exports.loadSettings = (hook_name, {settings}) => {
-  const my_settings = settings['ep_openid-client'];
+  const my_settings = settings[pluginName];
 
-  if (!my_settings) logger.error('Expecting an ep_openid-client block in settings.');
+  if (!my_settings) logger.error(`Expecting an ${pluginName} block in settings.`);
   for (const setting of ['base_url', 'client_id', 'client_secret', 'issuer', 'author_name_key']) {
-    if (!my_settings[setting]) logger.error(`Expecting an ep_openid-client.${setting} setting.`);
+    if (!my_settings[setting]) logger.error(`Expecting an ${pluginName}.${setting} setting.`);
   }
   Object.assign(oidc_settings, my_settings);
   oidc_settings.response_types = oidc_settings.response_types || ['code'];
@@ -79,7 +80,7 @@ exports.loadSettings = (hook_name, {settings}) => {
 
 exports.clientVars = (hook_name, context, callback) => {
   const {permit_author_name_change} = oidc_settings;
-  return callback({'ep_openid-client': {permit_author_name_change}});
+  return callback({[pluginName]: {permit_author_name_change}});
 };
 
 exports.expressCreateServer = (hook_name, {app}) => {
@@ -96,8 +97,8 @@ exports.expressCreateServer = (hook_name, {app}) => {
 
 exports.authenticate = (hook_name, {req, res, next}) => {
   logger.debug('authenticate hook for', req.url);
-  if (!req.session['ep_openid-client']) req.session['ep_openid-client'] = {};
-  const session = req.session['ep_openid-client'];
+  if (!req.session[pluginName]) req.session[pluginName] = {};
+  const session = req.session[pluginName];
 
   if (session.sub || req.path.startsWith('/auth/')) return next();
   if (oidc_settings.permit_anonymous_read_only) {

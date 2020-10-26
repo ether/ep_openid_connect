@@ -1,19 +1,22 @@
-# ep_openid-client
+# ep\_openid\_connect
 
-An Open ID Connect auth plugin for etherpad-lite.
+Etherpad plugin to authenticate users against an OpenID Connect provider.
 
 It uses provider discovery to keep configuration simple.
 
 Unlike other auth plugins, this one is not based around passport, for
 simplicity.
 
+This is a fork of
+[ep\_openid-client](https://github.com/stefanor/ep_openid-client).
+
 ## Settings
 
-The plugin expects an `ep_openid-client` block in the settings, with
+The plugin expects an `ep_openid_connect` block in the settings, with
 this structure:
 
 ```json
-  "ep_openid-client": {
+  "ep_openid_connect": {
     "issuer": "https://id.exmaple.com",
     "client_id": "MY CLINENT ID",
     "client_secret": "MY CLIENT SECRET",
@@ -44,10 +47,15 @@ this structure:
 
 Currently only tested against GitLab instances.
 
-## License
+## Copyright and License
+
+Copyright © 2020 Stefano Rivera <stefano@rivera.za.net>
+Copyright © 2020 Richard Hansen <rhansen@rhansen.org>
 
 Licensed under the [MIT/Expat license](LICENSE).
-Based on [ep_oauth2] and [ep_oidc].
 
-[ep_oauth2]: https://github.com/HumanBrainProject/ep_oauth2
-[ep_oidc]: https://github.com/ToniIltanen/ep_oidc
+This is a fork of
+[ep\_openid-client](https://github.com/stefanor/ep_openid-client) by Stefano
+Rivera, which is based on
+[ep\_oauth2](https://github.com/HumanBrainProject/ep_oauth2) and
+[ep\_oidc](https://github.com/ToniIltanen/ep_oidc).
