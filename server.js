@@ -35,10 +35,7 @@ async function authCallback(req, res) {
   delete oidc_session.state;
   let tokenset;
   try {
-    tokenset = await oidc_client.callback(redirectURL(), params, {
-      nonce,
-      state,
-    });
+    tokenset = await oidc_client.callback(redirectURL(), params, {nonce, state});
   } catch (e) {
     console.log('Authentication failed', e);
     return res.send('Authentication failed');
@@ -68,39 +65,23 @@ exports.loadSettings = (hook_name, {settings}) => {
   const my_settings = settings['ep_openid-client'];
 
   if (!my_settings) {
-    console.error(
-      'ep_openid-client: Expecting a ep_openid-client block in settings.'
-    );
+    console.error('ep_openid-client: Expecting a ep_openid-client block in settings.');
   }
-  for (const setting of [
-    'base_url',
-    'client_id',
-    'client_secret',
-    'issuer',
-    'author_name_key',
-  ]) {
+  for (const setting of ['base_url', 'client_id', 'client_secret', 'issuer', 'author_name_key']) {
     if (!my_settings[setting]) {
-      console.error(
-        'ep_openid-client: Expecting a ep_openid-client.' +
-          setting +
-          ' setting.'
-      );
+      console.error('ep_openid-client: Expecting a ep_openid-client.' + setting + ' setting.');
     }
   }
   Object.assign(oidc_settings, my_settings);
   oidc_settings.response_types = oidc_settings.response_types || ['code'];
-  oidc_settings.permit_author_name_change =
-    oidc_settings.permit_author_name_change || false;
-  oidc_settings.permit_anonymous_read_only =
-    oidc_settings.permit_anonymous_read_only || false;
+  oidc_settings.permit_author_name_change = oidc_settings.permit_author_name_change || false;
+  oidc_settings.permit_anonymous_read_only = oidc_settings.permit_anonymous_read_only || false;
   createClient();
 };
 
 exports.clientVars = (hook_name, context, callback) => {
   const {permit_author_name_change} = oidc_settings;
-  return callback({
-    'ep_openid-client': {permit_author_name_change},
-  });
+  return callback({'ep_openid-client': {permit_author_name_change}});
 };
 
 exports.expressCreateServer = (hook_name, {app}) => {
@@ -112,32 +93,22 @@ exports.expressCreateServer = (hook_name, {app}) => {
     })
   );
   app.get('/auth/callback', authCallback);
-  app.get('/auth/failure', (req, res) =>
-    res.send('<em>Authentication Failed</em>')
-  );
+  app.get('/auth/failure', (req, res) => res.send('<em>Authentication Failed</em>'));
 };
 
 exports.authenticate = (hook_name, {req, res, next}) => {
   console.debug('ep_openid-client: authenticate hook for', req.url);
-  if (!req.session['ep_openid-client']) {
-    req.session['ep_openid-client'] = {};
-  }
+  if (!req.session['ep_openid-client']) req.session['ep_openid-client'] = {};
   const session = req.session['ep_openid-client'];
 
-  if (session.sub || req.path.startsWith('/auth/')) {
-    return next();
-  }
+  if (session.sub || req.path.startsWith('/auth/')) return next();
   if (oidc_settings.permit_anonymous_read_only) {
-    if (req.path.match(/^\/(locales\.json|(p\/r\.|socket.io\/).*)$/)) {
-      return next();
-    }
+    if (req.path.match(/^\/(locales\.json|(p\/r\.|socket.io\/).*)$/)) return next();
   }
   session.next = req.url;
   session.nonce = generators.nonce();
   session.state = generators.state();
-  return res.redirect(
-    oidc_client.authorizationUrl({nonce: session.nonce, state: session.state})
-  );
+  return res.redirect(oidc_client.authorizationUrl({nonce: session.nonce, state: session.state}));
 };
 
 exports.handleMessage = (hook_name, {message, client}, cb) => {
@@ -148,9 +119,7 @@ exports.handleMessage = (hook_name, {message, client}, cb) => {
 
   const {session} = client.client.request;
   let name;
-  if ('user' in session && session.user.name) {
-    name = session.user.name;
-  }
+  if ('user' in session && session.user.name) name = session.user.name;
 
   if (name) {
     if (message.type == 'CLIENT_READY') {
@@ -162,14 +131,8 @@ exports.handleMessage = (hook_name, {message, client}, cb) => {
       );
       setUsername(message.token, name).finally(approve);
       return;
-    } else if (
-      message.type == 'COLLABROOM' &&
-      message.data.type == 'USERINFO_UPDATE'
-    ) {
-      if (
-        message.data.userInfo.name != name &&
-        !oidc_settings.permit_author_name_change
-      ) {
+    } else if (message.type == 'COLLABROOM' && message.data.type == 'USERINFO_UPDATE') {
+      if (message.data.userInfo.name != name && !oidc_settings.permit_author_name_change) {
         console.info('ep_openid-client: Rejecting name change');
         return deny();
       }
