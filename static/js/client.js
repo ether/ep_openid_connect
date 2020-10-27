@@ -1,5 +1,6 @@
 'use strict';
-/*global clientVars:readonly, $:readonly*/
+
+/* global $, clientVars, exports */
 
 /* etherpad-lite uses uglify 2.x, so stick to ES5 */
 

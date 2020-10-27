@@ -1,5 +1,7 @@
 'use strict';
 
+/* global exports, require */
+
 const log4js = require('ep_etherpad-lite/node_modules/log4js');
 const {URL} = require('url');
 const {Issuer, generators} = require('openid-client');
