@@ -76,7 +76,6 @@ exports.loadSettings = (hook_name, {settings: globalSettings}) => {
   Object.assign(settings, my_settings);
   settings.response_types = settings.response_types || ['code'];
   settings.permit_author_name_change = settings.permit_author_name_change || false;
-  settings.permit_anonymous_read_only = settings.permit_anonymous_read_only || false;
   createClient();
 };
 
@@ -103,9 +102,6 @@ exports.authenticate = (hook_name, {req, res, next}) => {
   const session = req.session[pluginName];
 
   if (session.sub || req.path.startsWith('/auth/')) return next();
-  if (settings.permit_anonymous_read_only) {
-    if (req.path.match(/^\/(locales\.json|(p\/r\.|socket.io\/).*)$/)) return next();
-  }
   session.next = req.url;
   session.nonce = generators.nonce();
   session.state = generators.state();

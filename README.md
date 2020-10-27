@@ -22,8 +22,7 @@ this structure:
     "client_secret": "MY CLIENT SECRET",
     "base_url": "https://pad.example.com",
     "author_name_key": "name",
-    "permit_author_name_change": false,
-    "permit_anonymous_read_only": false,
+    "permit_author_name_change": false
   },
 ```
 
@@ -40,8 +39,6 @@ this structure:
                     Defualts to `["code"]`.
 * `permit_author_name_change`: Optional Boolean. If true, authors may
                                change their display name.
-* `permit_anonymous_read_only`: Optional Boolean. If true, anonymous
-                                users may view the pad.
 
 ## Support
 
