@@ -124,20 +124,16 @@ exports.authnFailure = (hookName, {req, res}, cb) => {
 
 exports.handleMessage = async (hook_name, {message, client}) => {
   logger.debug('handleMessage hook', message);
-  const {session} = client.client.request;
-  let name;
-  if ('user' in session && session.user.name) name = session.user.name;
-
-  if (name) {
-    if (message.type == 'CLIENT_READY') {
-      logger.debug(
-        `CLIENT_READY ${client.id}: Setting username for token ${message.token} to ${name}`
-      );
-      await setUsername(message.token, name);
-    } else if (message.type == 'COLLABROOM' && message.data.type == 'USERINFO_UPDATE') {
-      if (message.data.userInfo.name != name && !settings.permit_displayname_change) {
-        message.data.userInfo.name = name;
-      }
+  const {user: {name} = {}} = client.client.request.session;
+  if (!name) return;
+  if (message.type == 'CLIENT_READY') {
+    logger.debug(
+      `CLIENT_READY ${client.id}: Setting username for token ${message.token} to ${name}`
+    );
+    await setUsername(message.token, name);
+  } else if (message.type == 'COLLABROOM' && message.data.type == 'USERINFO_UPDATE') {
+    if (message.data.userInfo.name != name && !settings.permit_displayname_change) {
+      message.data.userInfo.name = name;
     }
   }
 };
