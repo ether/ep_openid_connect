@@ -7,16 +7,16 @@ const authorManager = require('ep_etherpad-lite/node/db/AuthorManager');
 
 const pluginName = 'ep_openid_connect';
 const logger = log4js.getLogger(pluginName);
-const oidc_settings = {};
+const settings = {};
 let oidc_client = null;
 
 function redirectURL() {
-  return new URL('/auth/callback', oidc_settings.base_url).toString();
+  return new URL('/auth/callback', settings.base_url).toString();
 }
 
 async function createClient() {
-  const issuer = await Issuer.discover(oidc_settings.issuer);
-  const {client_id, client_secret, response_types} = oidc_settings;
+  const issuer = await Issuer.discover(settings.issuer);
+  const {client_id, client_secret, response_types} = settings;
   const redirect_uris = [redirectURL()];
   oidc_client = new issuer.Client({
     client_id,
@@ -46,7 +46,7 @@ async function authCallback(req, res) {
 
   const userinfo = await oidc_client.userinfo(tokenset);
   const sub = userinfo.sub;
-  const user_name = userinfo[oidc_settings.author_name_key];
+  const user_name = userinfo[settings.author_name_key];
   oidc_session.sub = sub;
   session.user = {
     name: user_name,
@@ -64,22 +64,22 @@ async function setUsername(token, username) {
   authorManager.setAuthorName(author, username);
 }
 
-exports.loadSettings = (hook_name, {settings}) => {
-  const my_settings = settings[pluginName];
+exports.loadSettings = (hook_name, {settings: globalSettings}) => {
+  const my_settings = globalSettings[pluginName];
 
   if (!my_settings) logger.error(`Expecting an ${pluginName} block in settings.`);
   for (const setting of ['base_url', 'client_id', 'client_secret', 'issuer', 'author_name_key']) {
     if (!my_settings[setting]) logger.error(`Expecting an ${pluginName}.${setting} setting.`);
   }
-  Object.assign(oidc_settings, my_settings);
-  oidc_settings.response_types = oidc_settings.response_types || ['code'];
-  oidc_settings.permit_author_name_change = oidc_settings.permit_author_name_change || false;
-  oidc_settings.permit_anonymous_read_only = oidc_settings.permit_anonymous_read_only || false;
+  Object.assign(settings, my_settings);
+  settings.response_types = settings.response_types || ['code'];
+  settings.permit_author_name_change = settings.permit_author_name_change || false;
+  settings.permit_anonymous_read_only = settings.permit_anonymous_read_only || false;
   createClient();
 };
 
 exports.clientVars = (hook_name, context, callback) => {
-  const {permit_author_name_change} = oidc_settings;
+  const {permit_author_name_change} = settings;
   return callback({[pluginName]: {permit_author_name_change}});
 };
 
@@ -101,7 +101,7 @@ exports.authenticate = (hook_name, {req, res, next}) => {
   const session = req.session[pluginName];
 
   if (session.sub || req.path.startsWith('/auth/')) return next();
-  if (oidc_settings.permit_anonymous_read_only) {
+  if (settings.permit_anonymous_read_only) {
     if (req.path.match(/^\/(locales\.json|(p\/r\.|socket.io\/).*)$/)) return next();
   }
   session.next = req.url;
@@ -128,7 +128,7 @@ exports.handleMessage = (hook_name, {message, client}, cb) => {
       setUsername(message.token, name).finally(approve);
       return;
     } else if (message.type == 'COLLABROOM' && message.data.type == 'USERINFO_UPDATE') {
-      if (message.data.userInfo.name != name && !oidc_settings.permit_author_name_change) {
+      if (message.data.userInfo.name != name && !settings.permit_author_name_change) {
         logger.info('Rejecting name change');
         return deny();
       }
