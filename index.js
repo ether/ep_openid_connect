@@ -12,7 +12,8 @@ const logger = log4js.getLogger(pluginName);
 const settings = {};
 let oidcClient = null;
 
-const endpointUrl = (endpoint) => new URL(`auth/${endpoint}`, settings.base_url).toString();
+const ep = (endpoint) => `/${pluginName}/${endpoint}`;
+const endpointUrl = (endpoint) => new URL(ep(endpoint).substr(1), settings.base_url).toString();
 
 exports.loadSettings = async (hookName, {settings: globalSettings}) => {
   const mySettings = globalSettings[pluginName];
@@ -44,8 +45,8 @@ exports.clientVars = (hookName, context, callback) => {
 
 exports.expressCreateServer = (hookName, {app}) => {
   logger.debug('Configuring auth routes');
-  app.get('/auth/callback', (req, res, next) => {
-    logger.debug('Processing auth callback');
+  app.get(ep('callback'), (req, res, next) => {
+    logger.debug(`Processing ${req.url}`);
     (async () => {
       const params = oidcClient.callbackParams(req);
       const oidcSession = req.session[pluginName] || {};
@@ -69,15 +70,15 @@ exports.expressCreateServer = (hookName, {app}) => {
       delete oidcSession.next;
     })().catch(next);
   });
-  app.get('/auth/login', (req, res, next) => {
-    logger.debug('Processing /auth/login request');
+  app.get(ep('login'), (req, res, next) => {
+    logger.debug(`Processing ${req.url}`);
     if (req.session[pluginName] == null) req.session[pluginName] = {};
     const oidcSession = req.session[pluginName];
     oidcSession.next = req.query.redirect_uri || settings.base_url;
     oidcSession.authParams = {nonce: generators.nonce(), state: generators.state()};
     res.redirect(oidcClient.authorizationUrl(oidcSession.authParams));
   });
-  app.get('/auth/logout', (req, res) => req.session.destroy(() => res.redirect(settings.base_url)));
+  app.get(ep('logout'), (req, res) => req.session.destroy(() => res.redirect(settings.base_url)));
 };
 
 exports.authenticate = (hookName, {req, res, users}, cb) => {
@@ -125,6 +126,6 @@ exports.handleMessage = async (hookName, {message, client}) => {
 };
 
 exports.preAuthorize = (hookName, {req}, cb) => {
-  if (req.path.startsWith('/auth/')) return cb([true]);
+  if (req.path.startsWith(ep(''))) return cb([true]);
   return cb([]);
 };
