@@ -1,9 +1,11 @@
 'use strict';
 
+const log4js = require('ep_etherpad-lite/node_modules/log4js');
 const {URL} = require('url');
 const {Issuer, generators} = require('openid-client');
 const authorManager = require('ep_etherpad-lite/node/db/AuthorManager');
 
+const logger = log4js.getLogger('ep_openid-client');
 const oidc_settings = {};
 let oidc_client = null;
 
@@ -21,11 +23,11 @@ async function createClient() {
     response_types,
     redirect_uris,
   });
-  console.info('ep_openid-client: Client discovery complete. Configured.');
+  logger.info('Client discovery complete. Configured.');
 }
 
 async function authCallback(req, res) {
-  console.debug('ep_openid-client: Processing auth callback');
+  logger.debug('Processing auth callback');
 
   const params = oidc_client.callbackParams(req);
   const {session} = req;
@@ -37,7 +39,7 @@ async function authCallback(req, res) {
   try {
     tokenset = await oidc_client.callback(redirectURL(), params, {nonce, state});
   } catch (e) {
-    console.log('Authentication failed', e);
+    logger.log('Authentication failed', e);
     return res.send('Authentication failed');
   }
 
@@ -56,7 +58,7 @@ async function authCallback(req, res) {
 }
 
 async function setUsername(token, username) {
-  console.debug('ep_openid-client: Setting author name for token', token);
+  logger.debug('Setting author name for token', token);
   const author = await authorManager.getAuthor4Token(token);
   authorManager.setAuthorName(author, username);
 }
@@ -64,13 +66,9 @@ async function setUsername(token, username) {
 exports.loadSettings = (hook_name, {settings}) => {
   const my_settings = settings['ep_openid-client'];
 
-  if (!my_settings) {
-    console.error('ep_openid-client: Expecting a ep_openid-client block in settings.');
-  }
+  if (!my_settings) logger.error('Expecting an ep_openid-client block in settings.');
   for (const setting of ['base_url', 'client_id', 'client_secret', 'issuer', 'author_name_key']) {
-    if (!my_settings[setting]) {
-      console.error('ep_openid-client: Expecting a ep_openid-client.' + setting + ' setting.');
-    }
+    if (!my_settings[setting]) logger.error(`Expecting an ep_openid-client.${setting} setting.`);
   }
   Object.assign(oidc_settings, my_settings);
   oidc_settings.response_types = oidc_settings.response_types || ['code'];
@@ -85,7 +83,7 @@ exports.clientVars = (hook_name, context, callback) => {
 };
 
 exports.expressCreateServer = (hook_name, {app}) => {
-  console.debug('ep_openid-client: Configuring auth routes');
+  logger.debug('Configuring auth routes');
   app.get('/logout', (req, res) =>
     req.session.destroy(() => {
       req.logout();
@@ -97,7 +95,7 @@ exports.expressCreateServer = (hook_name, {app}) => {
 };
 
 exports.authenticate = (hook_name, {req, res, next}) => {
-  console.debug('ep_openid-client: authenticate hook for', req.url);
+  logger.debug('authenticate hook for', req.url);
   if (!req.session['ep_openid-client']) req.session['ep_openid-client'] = {};
   const session = req.session['ep_openid-client'];
 
@@ -112,7 +110,7 @@ exports.authenticate = (hook_name, {req, res, next}) => {
 };
 
 exports.handleMessage = (hook_name, {message, client}, cb) => {
-  console.debug('ep_openid-client: handleMessage hook', message);
+  logger.debug('handleMessage hook', message);
 
   const approve = () => cb([message]);
   const deny = () => cb([null]);
@@ -123,17 +121,14 @@ exports.handleMessage = (hook_name, {message, client}, cb) => {
 
   if (name) {
     if (message.type == 'CLIENT_READY') {
-      console.debug(
-        'ep_openid-client: CLIENT_READY %s: Setting username for token %s to %s',
-        client.id,
-        message.token,
-        name
+      logger.debug(
+        `CLIENT_READY ${client.id}: Setting username for token ${message.token} to ${name}`
       );
       setUsername(message.token, name).finally(approve);
       return;
     } else if (message.type == 'COLLABROOM' && message.data.type == 'USERINFO_UPDATE') {
       if (message.data.userInfo.name != name && !oidc_settings.permit_author_name_change) {
-        console.info('ep_openid-client: Rejecting name change');
+        logger.info('Rejecting name change');
         return deny();
       }
     }
