@@ -41,7 +41,7 @@ function authCallback(req, res, next) {
     // the previous user to force the authenticate hook to run in case the user was already
     // authenticated as someone else.
     delete req.session.user;
-    res.redirect(oidc_session.next || '/');
+    res.redirect(oidc_session.next || oidc_settings.base_url);
     // Defer deletion of state until success so that the user can reload the page to retry after a
     // transient backchannel failure.
     delete oidc_session.authParams;
