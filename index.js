@@ -97,7 +97,7 @@ exports.authenticate = (hookName, {req, res, users}, cb) => {
   if (users[sub] == null) users[sub] = {};
   session.user = users[sub];
   session.user.username = sub;
-  session.user.name = userinfo[settings.displayname_claim] || session.user.name;
+  session.user.displayname = userinfo[settings.displayname_claim] || session.user.displayname;
   return cb([true]);
 };
 
@@ -109,18 +109,18 @@ exports.authnFailure = (hookName, {req, res}, cb) => {
 
 exports.handleMessage = async (hookName, {message, client}) => {
   logger.debug('handleMessage hook', message);
-  const {user: {name} = {}} = client.client.request.session;
-  if (!name) return;
+  const {user: {displayname} = {}} = client.client.request.session;
+  if (!displayname) return;
   if (message.type == 'CLIENT_READY') {
     logger.debug(
-      `CLIENT_READY ${client.id}: Setting username for token ${message.token} to ${name}`
+      `CLIENT_READY ${client.id}: Setting username for token ${message.token} to ${displayname}`
     );
     // TODO: author ID might come from session ID, not token.
     const authorId = await authorManager.getAuthor4Token(message.token);
-    await authorManager.setAuthorName(authorId, name);
+    await authorManager.setAuthorName(authorId, displayname);
   } else if (message.type == 'COLLABROOM' && message.data.type == 'USERINFO_UPDATE') {
-    if (message.data.userInfo.name != name && !settings.permit_displayname_change) {
-      message.data.userInfo.name = name;
+    if (message.data.userInfo.name != displayname && !settings.permit_displayname_change) {
+      message.data.userInfo.name = displayname;
     }
   }
 };
