@@ -69,7 +69,6 @@ exports.expressCreateServer = (hookName, {app}) => {
       delete oidcSession.next;
     })().catch(next);
   });
-  app.get('/auth/failure', (req, res) => res.send('<em>Authentication Failed</em>'));
   app.get('/auth/login', (req, res, next) => {
     logger.debug('Processing /auth/login request');
     if (req.session[pluginName] == null) req.session[pluginName] = {};
