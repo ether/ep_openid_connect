@@ -14,19 +14,6 @@ let oidc_client = null;
 
 const endpointUrl = (endpoint) => new URL(`auth/${endpoint}`, settings.base_url).toString();
 
-async function createClient() {
-  const issuer = await Issuer.discover(settings.issuer);
-  const {client_id, client_secret, response_types} = settings;
-  const redirect_uris = [endpointUrl('callback')];
-  oidc_client = new issuer.Client({
-    client_id,
-    client_secret,
-    response_types,
-    redirect_uris,
-  });
-  logger.info('Client discovery complete. Configured.');
-}
-
 function authCallback(req, res, next) {
   logger.debug('Processing auth callback');
   (async () => {
@@ -53,7 +40,7 @@ function authCallback(req, res, next) {
   })().catch(next);
 }
 
-exports.loadSettings = (hook_name, {settings: globalSettings}) => {
+exports.loadSettings = async (hook_name, {settings: globalSettings}) => {
   const my_settings = globalSettings[pluginName];
 
   if (!my_settings) logger.error(`Expecting an ${pluginName} block in settings.`);
@@ -67,7 +54,13 @@ exports.loadSettings = (hook_name, {settings: globalSettings}) => {
   settings.response_types = settings.response_types || ['code'];
   settings.permit_displayname_change = settings.permit_displayname_change || false;
   settings.prohibited_usernames = settings.prohibited_usernames || ['admin', 'guest'];
-  createClient();
+  oidc_client = new (await Issuer.discover(settings.issuer)).Client({
+    client_id: settings.client_id,
+    client_secret: settings.client_secret,
+    response_types: settings.response_types,
+    redirect_uris: [endpointUrl('callback')],
+  });
+  logger.info('Client discovery complete. Configured.');
 };
 
 exports.clientVars = (hook_name, context, callback) => {
