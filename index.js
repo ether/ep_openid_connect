@@ -89,7 +89,7 @@ exports.expressCreateServer = (hook_name, {app}) => {
   logger.debug('Configuring auth routes');
   app.get('/auth/callback', authCallback);
   app.get('/auth/failure', (req, res) => res.send('<em>Authentication Failed</em>'));
-  app.get('/logout', (req, res) => req.session.destroy(() => res.redirect('/')));
+  app.get('/logout', (req, res) => req.session.destroy(() => res.redirect(settings.base_url)));
 };
 
 exports.authenticate = (hook_name, {req, res, next}) => {
