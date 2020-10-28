@@ -13,7 +13,7 @@ const settings = {};
 let oidc_client = null;
 
 function redirectURL() {
-  return new URL('/auth/callback', settings.base_url).toString();
+  return new URL('auth/callback', settings.base_url).toString();
 }
 
 async function createClient() {
@@ -65,6 +65,8 @@ exports.loadSettings = (hook_name, {settings: globalSettings}) => {
     if (!my_settings[setting]) logger.error(`Expecting an ${pluginName}.${setting} setting.`);
   }
   Object.assign(settings, my_settings);
+  // Make sure base_url ends with '/' so that relative URLs are appended:
+  if (!settings.base_url.endsWith('/')) settings.base_url += '/';
   settings.displayname_claim = settings.displayname_claim || 'name';
   settings.response_types = settings.response_types || ['code'];
   settings.permit_displayname_change = settings.permit_displayname_change || false;
