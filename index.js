@@ -14,32 +14,6 @@ let oidc_client = null;
 
 const endpointUrl = (endpoint) => new URL(`auth/${endpoint}`, settings.base_url).toString();
 
-function authCallback(req, res, next) {
-  logger.debug('Processing auth callback');
-  (async () => {
-    const params = oidc_client.callbackParams(req);
-    const oidc_session = req.session[pluginName] || {};
-    const {authParams} = oidc_session;
-    if (authParams == null) throw new Error('no authentication paramters found in session state');
-    const tokenset = await oidc_client.callback(endpointUrl('callback'), params, authParams);
-    const userinfo = await oidc_client.userinfo(tokenset);
-    if (settings.prohibited_usernames.indexOf(userinfo.sub) !== -1) {
-      throw new Error(`authenticated user's 'sub' claim (${userinfo.sub}) is not permitted`);
-    }
-    oidc_session.userinfo = userinfo;
-    // The user has successfully authenticated, but don't set req.session.user here -- do it in the
-    // authenticate hook so that Etherpad can log the authentication success. However, DO "log out"
-    // the previous user to force the authenticate hook to run in case the user was already
-    // authenticated as someone else.
-    delete req.session.user;
-    res.redirect(oidc_session.next || settings.base_url);
-    // Defer deletion of state until success so that the user can reload the page to retry after a
-    // transient backchannel failure.
-    delete oidc_session.authParams;
-    delete oidc_session.next;
-  })().catch(next);
-}
-
 exports.loadSettings = async (hook_name, {settings: globalSettings}) => {
   const my_settings = globalSettings[pluginName];
 
@@ -70,7 +44,31 @@ exports.clientVars = (hook_name, context, callback) => {
 
 exports.expressCreateServer = (hook_name, {app}) => {
   logger.debug('Configuring auth routes');
-  app.get('/auth/callback', authCallback);
+  app.get('/auth/callback', (req, res, next) => {
+    logger.debug('Processing auth callback');
+    (async () => {
+      const params = oidc_client.callbackParams(req);
+      const oidc_session = req.session[pluginName] || {};
+      const {authParams} = oidc_session;
+      if (authParams == null) throw new Error('no authentication paramters found in session state');
+      const tokenset = await oidc_client.callback(endpointUrl('callback'), params, authParams);
+      const userinfo = await oidc_client.userinfo(tokenset);
+      if (settings.prohibited_usernames.indexOf(userinfo.sub) !== -1) {
+        throw new Error(`authenticated user's 'sub' claim (${userinfo.sub}) is not permitted`);
+      }
+      oidc_session.userinfo = userinfo;
+      // The user has successfully authenticated, but don't set req.session.user here -- do it in
+      // the authenticate hook so that Etherpad can log the authentication success. However, DO "log
+      // out" the previous user to force the authenticate hook to run in case the user was already
+      // authenticated as someone else.
+      delete req.session.user;
+      res.redirect(oidc_session.next || settings.base_url);
+      // Defer deletion of state until success so that the user can reload the page to retry after a
+      // transient backchannel failure.
+      delete oidc_session.authParams;
+      delete oidc_session.next;
+    })().catch(next);
+  });
   app.get('/auth/failure', (req, res) => res.send('<em>Authentication Failed</em>'));
   app.get('/auth/login', (req, res, next) => {
     logger.debug('Processing /auth/login request');
