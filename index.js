@@ -70,10 +70,11 @@ exports.loadSettings = (hook_name, {settings: globalSettings}) => {
   const my_settings = globalSettings[pluginName];
 
   if (!my_settings) logger.error(`Expecting an ${pluginName} block in settings.`);
-  for (const setting of ['base_url', 'client_id', 'client_secret', 'issuer', 'author_name_key']) {
+  for (const setting of ['base_url', 'client_id', 'client_secret', 'issuer']) {
     if (!my_settings[setting]) logger.error(`Expecting an ${pluginName}.${setting} setting.`);
   }
   Object.assign(settings, my_settings);
+  settings.author_name_key = settings.author_name_key || 'name';
   settings.response_types = settings.response_types || ['code'];
   settings.permit_author_name_change = settings.permit_author_name_change || false;
   createClient();
