@@ -53,12 +53,6 @@ function authCallback(req, res, next) {
   })().catch(next);
 }
 
-async function setUsername(token, username) {
-  logger.debug('Setting author name for token', token);
-  const author = await authorManager.getAuthor4Token(token);
-  authorManager.setAuthorName(author, username);
-}
-
 exports.loadSettings = (hook_name, {settings: globalSettings}) => {
   const my_settings = globalSettings[pluginName];
 
@@ -130,7 +124,9 @@ exports.handleMessage = async (hook_name, {message, client}) => {
     logger.debug(
       `CLIENT_READY ${client.id}: Setting username for token ${message.token} to ${name}`
     );
-    await setUsername(message.token, name);
+    // TODO: author ID might come from session ID, not token.
+    const authorId = await authorManager.getAuthor4Token(message.token);
+    await authorManager.setAuthorName(authorId, name);
   } else if (message.type == 'COLLABROOM' && message.data.type == 'USERINFO_UPDATE') {
     if (message.data.userInfo.name != name && !settings.permit_displayname_change) {
       message.data.userInfo.name = name;
