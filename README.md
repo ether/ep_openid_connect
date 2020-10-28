@@ -32,11 +32,11 @@ this structure:
 * `client_secret` (required): The OAuth2 client secret issued by the identity
   provider.
 * `base_url` (required): The public base Etherpad URL.
-* `author_name_key` (optional; defaults to `"name"`): The claim containing the
+* `displayname_claim` (optional; defaults to `"name"`): The claim containing the
   name to display in the pad's user list.
 * `response_types` (optional; defaults to `["code"]`): List of OpenID Connect
   response types.
-* `permit_author_name_change` (optional; defaults to `false`): Whether users may
+* `permit_displayname_change` (optional; defaults to `false`): Whether users may
   change their displayed name.
 
 ## Support

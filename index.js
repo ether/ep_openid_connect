@@ -48,7 +48,7 @@ async function authCallback(req, res) {
 
   const userinfo = await oidc_client.userinfo(tokenset);
   const sub = userinfo.sub;
-  const user_name = userinfo[settings.author_name_key];
+  const user_name = userinfo[settings.displayname_claim];
   oidc_session.sub = sub;
   session.user = {
     name: user_name,
@@ -74,15 +74,15 @@ exports.loadSettings = (hook_name, {settings: globalSettings}) => {
     if (!my_settings[setting]) logger.error(`Expecting an ${pluginName}.${setting} setting.`);
   }
   Object.assign(settings, my_settings);
-  settings.author_name_key = settings.author_name_key || 'name';
+  settings.displayname_claim = settings.displayname_claim || 'name';
   settings.response_types = settings.response_types || ['code'];
-  settings.permit_author_name_change = settings.permit_author_name_change || false;
+  settings.permit_displayname_change = settings.permit_displayname_change || false;
   createClient();
 };
 
 exports.clientVars = (hook_name, context, callback) => {
-  const {permit_author_name_change} = settings;
-  return callback({[pluginName]: {permit_author_name_change}});
+  const {permit_displayname_change} = settings;
+  return callback({[pluginName]: {permit_displayname_change}});
 };
 
 exports.expressCreateServer = (hook_name, {app}) => {
@@ -127,7 +127,7 @@ exports.handleMessage = (hook_name, {message, client}, cb) => {
       setUsername(message.token, name).finally(approve);
       return;
     } else if (message.type == 'COLLABROOM' && message.data.type == 'USERINFO_UPDATE') {
-      if (message.data.userInfo.name != name && !settings.permit_author_name_change) {
+      if (message.data.userInfo.name != name && !settings.permit_displayname_change) {
         logger.info('Rejecting name change');
         return deny();
       }
