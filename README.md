@@ -17,28 +17,28 @@ this structure:
 
 ```json
   "ep_openid_connect": {
-    "issuer": "https://id.exmaple.com",
-    "client_id": "MY CLINENT ID",
+    "issuer": "https://id.example.com",
+    "client_id": "MY CLIENT ID",
     "client_secret": "MY CLIENT SECRET",
     "base_url": "https://pad.example.com",
-    "author_name_key": "name",
-    "permit_author_name_change": false
+    "author_name_key": "name"
   },
 ```
 
 ### Settings Details
 
-* `issuer`: The base URL of the Open ID Connect instance, used to
-            perform discovery of the endpoints.
-* `client_id`: The OAUTH2 client ID issued by the server.
-* `client_secret`: The OAUTH2 client secret issued by the server.
-* `base_url`: The public base URL of the Etherpad install.
-* `author_name_key`: The key into the userinfo structure, that will
-                     return the desired name for the authors.
-* `response_types`: Optional list of OpenID Connect response types.
-                    Defualts to `["code"]`.
-* `permit_author_name_change`: Optional Boolean. If true, authors may
-                               change their display name.
+* `issuer` (required): The base URL of the OpenID Connect identity provider,
+  used to perform discovery of the endpoints.
+* `client_id` (required): The OAuth2 client ID issued by the identity provider.
+* `client_secret` (required): The OAuth2 client secret issued by the identity
+  provider.
+* `base_url` (required): The public base Etherpad URL.
+* `author_name_key` (required): The claim containing the name to display in the
+  pad's user list.
+* `response_types` (optional; defaults to `["code"]`): List of OpenID Connect
+  response types.
+* `permit_author_name_change` (optional; defaults to `false`): Whether users may
+  change their displayed name.
 
 ## Support
 
