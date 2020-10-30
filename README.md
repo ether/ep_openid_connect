@@ -24,6 +24,9 @@ this structure:
   },
 ```
 
+OAuth/OpenID Connect redirect URL (a.k.a. callback URL):
+`https://pad.example.com/ep_openid_connect/callback`
+
 ### Settings Details
 
 * `issuer` (required): The base URL of the OpenID Connect identity provider,
@@ -31,7 +34,9 @@ this structure:
 * `client_id` (required): The OAuth2 client ID issued by the identity provider.
 * `client_secret` (required): The OAuth2 client secret issued by the identity
   provider.
-* `base_url` (required): The public base Etherpad URL.
+* `base_url` (required): The public base Etherpad URL. When registering Etherpad
+  with your identity provider, the redirect URL (a.k.a. callback URL) is this
+  base URL plus `/ep_openid_connect/callback`.
 * `displayname_claim` (optional; defaults to `"name"`): The claim containing the
   name to display in the pad's user list.
 * `response_types` (optional; defaults to `["code"]`): List of OpenID Connect
