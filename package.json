@@ -50,5 +50,9 @@
   "scripts": {
     "lint": "eslint *.js static/js/*.js",
     "tidy": "prettier --write *.js static/js/*.js"
+  },
+  "funding": {
+    "type": "individual",
+    "url": "http://etherpad.org/"
   }
 }
