@@ -54,5 +54,11 @@
   "funding": {
     "type": "individual",
     "url": "http://etherpad.org/"
+  },
+  "peerDependencies": {
+    "ep_etherpad-lite": ">=1.8.6"
+  },
+  "engines": {
+    "lint": "eslint ."
   }
 }
