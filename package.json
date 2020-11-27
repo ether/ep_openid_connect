@@ -59,6 +59,6 @@
     "ep_etherpad-lite": ">=1.8.6"
   },
   "engines": {
-    "lint": "eslint ."
+    "node": ">=10.13.0"
   }
 }
