@@ -113,8 +113,8 @@ Currently only tested against GitLab instances.
 
 ## Copyright and License
 
-Copyright © 2020 Stefano Rivera <stefano@rivera.za.net>
-Copyright © 2020 Richard Hansen <rhansen@rhansen.org>
+Copyright © 2020 Stefano Rivera <stefano@rivera.za.net>\
+Copyright © 2020-2021 Richard Hansen <rhansen@rhansen.org>
 
 Licensed under the [MIT/Expat license](LICENSE).
 
