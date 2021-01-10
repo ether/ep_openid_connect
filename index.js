@@ -1,7 +1,5 @@
 'use strict';
 
-/* global exports, require */
-
 const log4js = require('ep_etherpad-lite/node_modules/log4js');
 const {URL} = require('url');
 const {Issuer, generators} = require('openid-client');
@@ -111,15 +109,15 @@ exports.handleMessage = async (hookName, {message, client}) => {
   logger.debug('handleMessage hook', message);
   const {user: {displayname} = {}} = client.client.request.session;
   if (!displayname) return;
-  if (message.type == 'CLIENT_READY') {
+  if (message.type === 'CLIENT_READY') {
     logger.debug(
         `CLIENT_READY ${client.id}: Setting username for token ${message.token} to ${displayname}`
     );
     // TODO: author ID might come from session ID, not token.
     const authorId = await authorManager.getAuthor4Token(message.token);
     await authorManager.setAuthorName(authorId, displayname);
-  } else if (message.type == 'COLLABROOM' && message.data.type == 'USERINFO_UPDATE') {
-    if (message.data.userInfo.name != displayname && !settings.permit_displayname_change) {
+  } else if (message.type === 'COLLABROOM' && message.data.type === 'USERINFO_UPDATE') {
+    if (message.data.userInfo.name !== displayname && !settings.permit_displayname_change) {
       message.data.userInfo.name = displayname;
     }
   }
