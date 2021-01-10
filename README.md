@@ -10,7 +10,7 @@ simplicity.
 This is a fork of
 [ep\_openid-client](https://github.com/stefanor/ep_openid-client).
 
-## Settings
+## Configuration
 
 The plugin expects an `ep_openid_connect` block in the settings, with
 this structure:
@@ -27,7 +27,7 @@ this structure:
 OAuth/OpenID Connect redirect URL (a.k.a. callback URL):
 `https://pad.example.com/ep_openid_connect/callback`
 
-### Settings Details
+### Configuration Details
 
 * `issuer` (required): The base URL of the OpenID Connect identity provider,
   used to perform discovery of the endpoints.
