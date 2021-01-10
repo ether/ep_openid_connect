@@ -37,19 +37,11 @@
   },
   "eslintConfig": {
     "root": true,
-    "env": {
-      "es6": true,
-      "node": true
-    },
-    "parserOptions": {
-      "ecmaVersion": 8
-    },
-    "extends": [
-      "eslint:recommended"
-    ]
+    "extends": "etherpad/plugin"
   },
   "scripts": {
-    "lint": "eslint *.js static/js/*.js"
+    "lint": "eslint .",
+    "lint:fix": "eslint --fix ."
   },
   "funding": {
     "type": "individual",
