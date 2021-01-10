@@ -33,8 +33,7 @@
     "eslint-plugin-node": "^11.1.0",
     "eslint-plugin-prefer-arrow": "^1.2.2",
     "eslint-plugin-promise": "^4.2.1",
-    "eslint-plugin-you-dont-need-lodash-underscore": "^6.10.0",
-    "prettier": "^2.1.2"
+    "eslint-plugin-you-dont-need-lodash-underscore": "^6.10.0"
   },
   "eslintConfig": {
     "root": true,
@@ -49,14 +48,8 @@
       "eslint:recommended"
     ]
   },
-  "prettier": {
-    "bracketSpacing": false,
-    "printWidth": 100,
-    "singleQuote": true
-  },
   "scripts": {
-    "lint": "eslint *.js static/js/*.js",
-    "tidy": "prettier --write *.js static/js/*.js"
+    "lint": "eslint *.js static/js/*.js"
   },
   "funding": {
     "type": "individual",
