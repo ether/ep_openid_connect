@@ -22,10 +22,13 @@ this structure:
     "client_secret": "MY CLIENT SECRET",
     "base_url": "https://pad.example.com"
   },
+  "requireAuthentication": true,
 ```
 
 OAuth/OpenID Connect redirect URL (a.k.a. callback URL):
 `https://pad.example.com/ep_openid_connect/callback`
+
+Etherpad's `requireAuthentication` setting must be `true`.
 
 ### Configuration Details
 
