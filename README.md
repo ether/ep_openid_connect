@@ -56,6 +56,7 @@ Etherpad's `requireAuthentication` setting must be `true`.
   name to display in the pad's user list.
 * `response_types` (optional; defaults to `["code"]`): List of OpenID Connect
   response types.
+* `scope` (optional; defaults to `["openid"]`): List of OAuth2 scope strings.
 * `permit_displayname_change` (optional; defaults to `false`): Whether users may
   change their displayed name.
 * `prohibited_usernames` (optional; defaults to `['admin', 'guest']`): List of

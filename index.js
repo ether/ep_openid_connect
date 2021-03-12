@@ -11,6 +11,7 @@ const settings = {
   response_types: ['code'],
   permit_displayname_change: false,
   prohibited_usernames: ['admin', 'guest'],
+  scope: ['openid'],
 };
 let oidcClient = null;
 
@@ -116,7 +117,11 @@ exports.expressCreateServer = (hookName, {app}) => {
     if (req.session.ep_openid_connect == null) req.session.ep_openid_connect = {};
     const oidcSession = req.session.ep_openid_connect;
     oidcSession.next = req.query.redirect_uri || settings.base_url;
-    oidcSession.authParams = {nonce: generators.nonce(), state: generators.state()};
+    oidcSession.authParams = {
+      nonce: generators.nonce(),
+      scope: settings.scope.join(' '),
+      state: generators.state(),
+    };
     res.redirect(oidcClient.authorizationUrl(oidcSession.authParams));
   });
   app.get(ep('logout'), (req, res) => req.session.destroy(() => res.redirect(settings.base_url)));
