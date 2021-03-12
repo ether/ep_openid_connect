@@ -105,13 +105,13 @@ exports.authnFailure = (hookName, {req, res}) => {
   return true;
 };
 
-exports.handleMessage = async (hookName, {message, client}) => {
+exports.handleMessage = async (hookName, {message, socket}) => {
   logger.debug('handleMessage hook', message);
-  const {user: {displayname} = {}} = client.client.request.session;
+  const {user: {displayname} = {}} = socket.client.request.session;
   if (!displayname) return;
   if (message.type === 'CLIENT_READY') {
     logger.debug(
-        `CLIENT_READY ${client.id}: Setting username for token ${message.token} to ${displayname}`
+        `CLIENT_READY ${socket.id}: Setting username for token ${message.token} to ${displayname}`
     );
     // TODO: author ID might come from session ID, not token.
     const authorId = await authorManager.getAuthor4Token(message.token);
