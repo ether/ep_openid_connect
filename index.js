@@ -36,9 +36,9 @@ exports.loadSettings = async (hookName, {settings: globalSettings}) => {
   logger.info('Client discovery complete. Configured.');
 };
 
-exports.clientVars = (hookName, context, callback) => {
+exports.clientVars = (hookName, context) => {
   const {permit_displayname_change} = settings;
-  return callback({[pluginName]: {permit_displayname_change}});
+  return {[pluginName]: {permit_displayname_change}};
 };
 
 exports.expressCreateServer = (hookName, {app}) => {
@@ -79,7 +79,7 @@ exports.expressCreateServer = (hookName, {app}) => {
   app.get(ep('logout'), (req, res) => req.session.destroy(() => res.redirect(settings.base_url)));
 };
 
-exports.authenticate = (hookName, {req, res, users}, cb) => {
+exports.authenticate = (hookName, {req, res, users}) => {
   logger.debug('authenticate hook for', req.url);
   const {session} = req;
   const {[pluginName]: {userinfo = {}} = {}} = session;
@@ -89,20 +89,20 @@ exports.authenticate = (hookName, {req, res, users}, cb) => {
     // force regeneration.
     delete session[pluginName];
     // Authn failed. Let another plugin try to authenticate the user.
-    return cb([]);
+    return;
   }
   // Successfully authenticated.
   if (users[sub] == null) users[sub] = {};
   session.user = users[sub];
   session.user.username = sub;
   session.user.displayname = userinfo[settings.displayname_claim] || session.user.displayname;
-  return cb([true]);
+  return true;
 };
 
-exports.authnFailure = (hookName, {req, res}, cb) => {
+exports.authnFailure = (hookName, {req, res}) => {
   const url = new URL(req.url.substr(1), settings.base_url).toString();
   res.redirect(`${endpointUrl('login')}?redirect_uri=${encodeURIComponent(url)}`);
-  return cb([true]);
+  return true;
 };
 
 exports.handleMessage = async (hookName, {message, client}) => {
@@ -123,7 +123,7 @@ exports.handleMessage = async (hookName, {message, client}) => {
   }
 };
 
-exports.preAuthorize = (hookName, {req}, cb) => {
-  if (req.path.startsWith(ep(''))) return cb([true]);
-  return cb([]);
+exports.preAuthorize = (hookName, {req}) => {
+  if (req.path.startsWith(ep(''))) return true;
+  return;
 };
