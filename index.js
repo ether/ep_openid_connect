@@ -7,26 +7,24 @@ const authorManager = require('ep_etherpad-lite/node/db/AuthorManager');
 
 const pluginName = 'ep_openid_connect';
 const logger = log4js.getLogger(pluginName);
-const settings = {};
+const settings = {
+  displayname_claim: 'name',
+  response_types: ['code'],
+  permit_displayname_change: false,
+  prohibited_usernames: ['admin', 'guest'],
+};
 let oidcClient = null;
 
 const ep = (endpoint) => `/${pluginName}/${endpoint}`;
 const endpointUrl = (endpoint) => new URL(ep(endpoint).substr(1), settings.base_url).toString();
 
-exports.loadSettings = async (hookName, {settings: globalSettings}) => {
-  const mySettings = globalSettings[pluginName];
-
-  if (!mySettings) logger.error(`Expecting an ${pluginName} block in settings.`);
+exports.loadSettings = async (hookName, {settings: {[pluginName]: config = {}}}) => {
+  Object.assign(settings, config);
   for (const setting of ['base_url', 'client_id', 'client_secret', 'issuer']) {
-    if (!mySettings[setting]) logger.error(`Expecting an ${pluginName}.${setting} setting.`);
+    if (!settings[setting]) logger.error(`Expecting an ${pluginName}.${setting} setting.`);
   }
-  Object.assign(settings, mySettings);
   // Make sure base_url ends with '/' so that relative URLs are appended:
   if (!settings.base_url.endsWith('/')) settings.base_url += '/';
-  settings.displayname_claim = settings.displayname_claim || 'name';
-  settings.response_types = settings.response_types || ['code'];
-  settings.permit_displayname_change = settings.permit_displayname_change || false;
-  settings.prohibited_usernames = settings.prohibited_usernames || ['admin', 'guest'];
   oidcClient = new (await Issuer.discover(settings.issuer)).Client({
     client_id: settings.client_id,
     client_secret: settings.client_secret,
