@@ -21,7 +21,10 @@ const endpointUrl = (endpoint) => new URL(ep(endpoint).substr(1), settings.base_
 exports.loadSettings = async (hookName, {settings: {[pluginName]: config = {}}}) => {
   Object.assign(settings, config);
   for (const setting of ['base_url', 'client_id', 'client_secret', 'issuer']) {
-    if (!settings[setting]) logger.error(`Expecting an ${pluginName}.${setting} setting.`);
+    if (!settings[setting]) {
+      logger.error(`Required setting missing from settings.json: ${pluginName}.${setting}`);
+      return;
+    }
   }
   // Make sure base_url ends with '/' so that relative URLs are appended:
   if (!settings.base_url.endsWith('/')) settings.base_url += '/';
@@ -35,11 +38,13 @@ exports.loadSettings = async (hookName, {settings: {[pluginName]: config = {}}})
 };
 
 exports.clientVars = (hookName, context) => {
+  if (oidcClient == null) return;
   const {permit_displayname_change} = settings;
   return {[pluginName]: {permit_displayname_change}};
 };
 
 exports.expressCreateServer = (hookName, {app}) => {
+  if (oidcClient == null) return;
   logger.debug('Configuring auth routes');
   app.get(ep('callback'), (req, res, next) => {
     logger.debug(`Processing ${req.url}`);
@@ -78,6 +83,7 @@ exports.expressCreateServer = (hookName, {app}) => {
 };
 
 exports.authenticate = (hookName, {req, res, users}) => {
+  if (oidcClient == null) return;
   logger.debug('authenticate hook for', req.url);
   const {session} = req;
   const {[pluginName]: {userinfo = {}} = {}} = session;
@@ -98,12 +104,14 @@ exports.authenticate = (hookName, {req, res, users}) => {
 };
 
 exports.authnFailure = (hookName, {req, res}) => {
+  if (oidcClient == null) return;
   const url = new URL(req.url.substr(1), settings.base_url).toString();
   res.redirect(`${endpointUrl('login')}?redirect_uri=${encodeURIComponent(url)}`);
   return true;
 };
 
 exports.handleMessage = async (hookName, {message, socket}) => {
+  if (oidcClient == null) return;
   logger.debug('handleMessage hook', message);
   const {user: {displayname} = {}} = socket.client.request.session;
   if (!displayname) return;
@@ -122,6 +130,7 @@ exports.handleMessage = async (hookName, {message, socket}) => {
 };
 
 exports.preAuthorize = (hookName, {req}) => {
+  if (oidcClient == null) return;
   if (req.path.startsWith(ep(''))) return true;
   return;
 };

@@ -1,7 +1,6 @@
 'use strict';
 
 exports.postToolbarInit = () => {
-  if (!clientVars.ep_openid_connect.permit_displayname_change) {
-    $('#myusernameedit').attr('disabled', true);
-  }
+  const {ep_openid_connect: {permit_displayname_change = true} = {}} = clientVars;
+  if (!permit_displayname_change) $('#myusernameedit').attr('disabled', true);
 };
