@@ -52,8 +52,9 @@ Etherpad's `requireAuthentication` setting must be `true`.
 * `base_url` (required): The public base Etherpad URL. When registering Etherpad
   with your identity provider, the redirect URL (a.k.a. callback URL) is this
   base URL plus `/ep_openid_connect/callback`.
-* `displayname_claim` (optional; defaults to `"name"`): The claim containing the
-  name to display in the pad's user list.
+* `displayname_claim` (optional; defaults to `"name"`): The default value of
+  `user_properties.displayname.claim`. **Deprecated:** Set
+  `user_properties.displayname.claim` instead.
 * `response_types` (optional; defaults to `["code"]`): List of OpenID Connect
   response types.
 * `scope` (optional; defaults to `["openid"]`): List of OAuth2 scope strings.
@@ -65,6 +66,9 @@ Etherpad's `requireAuthentication` setting must be `true`.
   the users in the `users` setting and to avoid conflicts with other plugins
   (such as
   [ep\_readonly\_guest](https://github.com/ether/ep_readonly_guest#readme)).
+* `user_properties` (optional): Object that controls the automatic creation of
+  additional properties on each authenticated user's account object. See below
+  for details.
 
 ## Interaction with the `users` Setting
 
@@ -74,15 +78,18 @@ identifier for the user.) Many identity providers (such as GitLab) identify
 users by a numeric user ID, so the `sub` claim (and thus the Etherpad username)
 will probably look something like "5374".
 
-All values associated with that username in the `settings.json` `users` object
-are applied to the user, including `is_admin`, `readOnly`, and `canCreate`.
-
-For example, if you want the user identified by "5374" to be a read-only user,
-you would add the following to your `settings.json`:
+Each authenticated user gets their own account object. Default properties for a
+user's account object come from the `users` setting in `settings.json`. Etherpad
+uses the `is_admin`, `readOnly`, and `canCreate` properties to control access,
+and this plugin uses the `displayname` property for the name displayed in the
+user list. For example, the following sets the default display name to
+"Firstname Lastname" and the default access to read-only for the user identified
+by "5374":
 
 ```json
   "users": {
     "5374": {
+      "displayname": "Firstname Lastname",
       "readOnly": true
     }
   },
@@ -92,6 +99,54 @@ To avoid unintentionally applying values to users authenticated via this plugin,
 you can use the `prohibited_usernames` settings to force an authentication error
 if the `sub` claim happens to match. This is useful for preventing a malicious
 identity provider from gaining admin access to your Etherpad instance.
+
+The `user_properties` setting can be used to automatically add or change
+properties on a user's account object when the user authenticates. The
+`user_properties` setting maps a property name to an object that describes how
+the property's value is obtained. For example:
+
+```json
+  "ep_openid_connect": {
+    "user_properties": {
+      "fromClaimWithDefault": {
+        "claim": "claimName",
+        "default": "default value"
+      },
+      "fromClaimOrUnset": {
+        "claim": "claimName"
+      },
+      "fixedValue": {
+        "default": "fixed value"
+      }
+    }
+  },
+```
+
+The above example sets properties as follows:
+* Each user's `fromClaimWithDefault` property is set to the value of the user's
+  `claimName` claim if present, otherwise the property is left unchanged if
+  already set, otherwise it is set to the string `"default value"`.
+* Each user's `fromClaimOrUnset` property is set to the value of the user's
+  `claimName` claim if present, otherwise the property is left unset/unchanged.
+* Each user's `fixedValue` property is set to the string `"fixed value"`
+  unless already set.
+
+You can use this feature to control access in the OpenID Connect provider if it
+provides suitable claims:
+
+```json
+  "ep_openid_connect": {
+    "scope": ["openid", "etherpad"],
+    "user_properties": {
+      "is_admin": {"claim": "etherpad_is_admin"},
+      "readOnly": {"claim": "etherpad_readOnly"},
+      "canCreate": {"claim": "etherpad_canCreate"}
+    }
+  },
+```
+
+To avoid breaking assumptions made by Etherpad, the `username` property cannot
+be altered via the `user_properties` setting.
 
 ## Interaction with the ep\_readonly\_guest Plugin
 

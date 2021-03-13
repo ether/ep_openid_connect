@@ -12,6 +12,7 @@ const settings = {
   permit_displayname_change: false,
   prohibited_usernames: ['admin', 'guest'],
   scope: ['openid'],
+  user_properties: {},
 };
 let oidcClient = null;
 
@@ -73,6 +74,12 @@ exports.loadSettings = async (hookName, {settings: {ep_openid_connect: config = 
   }
   // Make sure base_url ends with '/' so that relative URLs are appended:
   if (!settings.base_url.endsWith('/')) settings.base_url += '/';
+  settings.user_properties = {
+    displayname: {claim: settings.displayname_claim},
+    ...settings.user_properties,
+    // The username property must always match the key used in settings.users.
+    username: {claim: 'sub'},
+  };
   oidcClient = new (await getIssuer(settings)).Client({
     client_id: settings.client_id,
     client_secret: settings.client_secret,
@@ -145,10 +152,17 @@ exports.authenticate = (hookName, {req, res, users}) => {
     return;
   }
   // Successfully authenticated.
-  if (users[sub] == null) users[sub] = {};
+  logger.info('Successfully authenticated user with userinfo:', userinfo);
   session.user = users[sub];
-  session.user.username = sub;
-  session.user.displayname = userinfo[settings.displayname_claim] || session.user.displayname;
+  if (session.user == null) session.user = users[sub] = {};
+  for (const [propName, descriptor] of Object.entries(settings.user_properties)) {
+    if (descriptor.claim != null && descriptor.claim in userinfo) {
+      session.user[propName] = userinfo[descriptor.claim];
+    } else if ('default' in descriptor && !(propName in session.user)) {
+      session.user[propName] = descriptor.default;
+    }
+  }
+  logger.debug('User properties:', session.user);
   return true;
 };
 
