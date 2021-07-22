@@ -19,9 +19,18 @@ const ep = (endpoint) => `/${pluginName}/${endpoint}`;
 const endpointUrl = (endpoint) => new URL(ep(endpoint).substr(1), settings.base_url).toString();
 
 const discoverIssuer = async (issuerUrl) => {
+  issuerUrl = new URL(issuerUrl);
+  // https://openid.net/specs/openid-connect-discovery-1_0.html#IssuerDiscovery says that the URI
+  // must not have query or fragment components.
+  if (issuerUrl.search) {
+    throw new Error(`Unexpected query in issuer URL (${issuerUrl}): ${issuerUrl.search}`);
+  }
+  if (issuerUrl.hash) {
+    throw new Error(`Unexpected fragment in issuer URL (${issuerUrl}): ${issuerUrl.hash}`);
+  }
   let issuer;
   try {
-    issuer = await Issuer.discover(issuerUrl);
+    issuer = await Issuer.discover(issuerUrl.href);
   } catch (err) {
     // The URL used to get the issuer metadata doesn't exactly follow RFC 8615; see:
     // https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderConfig
