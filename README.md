@@ -34,11 +34,18 @@ Etherpad's `requireAuthentication` setting must be `true`.
 
 ### Configuration Details
 
-* `issuer` (required): The base URL of the OpenID Connect identity provider,
-  used to discover the relevant OpenID Connect endpoints. Your identity provider
-  must support the [OpenID Connect
+* `issuer` (required if `issuer_metadata` is not set): The base URL of the
+  OpenID Connect identity provider, used to discover the relevant OpenID Connect
+  endpoints. If set, your identity provider must support the [OpenID Connect
   Discovery](https://openid.net/specs/openid-connect-discovery-1_0.html)
   protocol.
+* `issuer_metadata` (required if `issuer` is not set): Object containing details
+  about your OpenID Connect identity provider. Used for manual configuration if
+  your identity provider does not support the Discovery protocol. If your
+  identity provider does support Discovery, you are encouraged to set `issuer`
+  instead. For properties, see the [documentation for the openid-client `Issuer`
+  object
+  constructor](https://github.com/panva/node-openid-client/blob/v4.7.4/docs/README.md#new-issuermetadata).
 * `client_id` (required): The OAuth2 client ID issued by the identity provider.
 * `client_secret` (required): The OAuth2 client secret issued by the identity
   provider.

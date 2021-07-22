@@ -49,17 +49,30 @@ const discoverIssuer = async (issuerUrl) => {
   return issuer;
 };
 
+const getIssuer = async (settings) => {
+  if (settings.issuer) return await discoverIssuer(settings.issuer);
+  return new Issuer(settings.issuer_metadata);
+};
+
 exports.loadSettings = async (hookName, {settings: {[pluginName]: config = {}}}) => {
   Object.assign(settings, config);
-  for (const setting of ['base_url', 'client_id', 'client_secret', 'issuer']) {
+  for (const setting of ['base_url', 'client_id', 'client_secret']) {
     if (!settings[setting]) {
       logger.error(`Required setting missing from settings.json: ${pluginName}.${setting}`);
       return;
     }
   }
+  if (!settings.issuer && !settings.issuer_metadata) {
+    logger.error(`Either ${pluginName}.issuer or ${pluginName}.issuer_metadata must be set`);
+    return;
+  }
+  if (settings.issuer && settings.issuer_metadata) {
+    logger.warn(
+        `Ignoring ${pluginName}.issuer_metadata setting because ${pluginName}.issuer is set`);
+  }
   // Make sure base_url ends with '/' so that relative URLs are appended:
   if (!settings.base_url.endsWith('/')) settings.base_url += '/';
-  oidcClient = new (await discoverIssuer(settings.issuer)).Client({
+  oidcClient = new (await getIssuer(settings)).Client({
     client_id: settings.client_id,
     client_secret: settings.client_secret,
     response_types: settings.response_types,
