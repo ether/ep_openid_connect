@@ -35,7 +35,10 @@ Etherpad's `requireAuthentication` setting must be `true`.
 ### Configuration Details
 
 * `issuer` (required): The base URL of the OpenID Connect identity provider,
-  used to perform discovery of the endpoints.
+  used to discover the relevant OpenID Connect endpoints. Your identity provider
+  must support the [OpenID Connect
+  Discovery](https://openid.net/specs/openid-connect-discovery-1_0.html)
+  protocol.
 * `client_id` (required): The OAuth2 client ID issued by the identity provider.
 * `client_secret` (required): The OAuth2 client secret issued by the identity
   provider.
