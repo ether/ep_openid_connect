@@ -18,6 +18,28 @@ let oidcClient = null;
 const ep = (endpoint) => `/${pluginName}/${endpoint}`;
 const endpointUrl = (endpoint) => new URL(ep(endpoint).substr(1), settings.base_url).toString();
 
+const discoverIssuer = async (issuerUrl) => {
+  let issuer;
+  try {
+    issuer = await Issuer.discover(issuerUrl);
+  } catch (err) {
+    // The URL used to get the issuer metadata doesn't exactly follow RFC 8615; see:
+    // https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderConfig
+    const discoveryUrl = new URL(issuerUrl);
+    if (!discoveryUrl.pathname.includes('/.well-known/')) {
+      discoveryUrl.pathname =
+          `${discoveryUrl.pathname.replace(/\/$/, '')}/.well-known/openid-configuration`;
+    }
+    logger.error(
+        'Failed to discover issuer metadata via OpenID Connect Discovery ' +
+        '(https://openid.net/specs/openid-connect-discovery-1_0.html). ' +
+        `Does your issuer support Discovery? (hint: ${discoveryUrl})`);
+    throw err;
+  }
+  logger.info('OpenID Connect Discovery complete.');
+  return issuer;
+};
+
 exports.loadSettings = async (hookName, {settings: {[pluginName]: config = {}}}) => {
   Object.assign(settings, config);
   for (const setting of ['base_url', 'client_id', 'client_secret', 'issuer']) {
@@ -28,13 +50,13 @@ exports.loadSettings = async (hookName, {settings: {[pluginName]: config = {}}})
   }
   // Make sure base_url ends with '/' so that relative URLs are appended:
   if (!settings.base_url.endsWith('/')) settings.base_url += '/';
-  oidcClient = new (await Issuer.discover(settings.issuer)).Client({
+  oidcClient = new (await discoverIssuer(settings.issuer)).Client({
     client_id: settings.client_id,
     client_secret: settings.client_secret,
     response_types: settings.response_types,
     redirect_uris: [endpointUrl('callback')],
   });
-  logger.info('Client discovery complete. Configured.');
+  logger.info('Configured.');
 };
 
 exports.clientVars = (hookName, context) => {
