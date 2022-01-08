@@ -98,11 +98,7 @@ exports.expressCreateServer = (hookName, {app}) => {
       const {authParams} = oidcSession;
       if (authParams == null) throw new Error('no authentication paramters found in session state');
       const tokenset = await oidcClient.callback(endpointUrl('callback'), params, authParams);
-      const userinfo = await oidcClient.userinfo(tokenset);
-      if (settings.prohibited_usernames.indexOf(userinfo.sub) !== -1) {
-        throw new Error(`authenticated user's 'sub' claim (${userinfo.sub}) is not permitted`);
-      }
-      oidcSession.userinfo = userinfo;
+      oidcSession.userinfo = await oidcClient.userinfo(tokenset);
       // The user has successfully authenticated, but don't set req.session.user here -- do it in
       // the authenticate hook so that Etherpad can log the authentication success. However, DO "log
       // out" the previous user to force the authenticate hook to run in case the user was already
@@ -132,7 +128,11 @@ exports.authenticate = (hookName, {req, res, users}) => {
   const {session} = req;
   const {ep_openid_connect: {userinfo = {}} = {}} = session;
   const {sub} = userinfo;
-  if (sub == null) {
+  if (sub == null || // Nullish means the user isn't authenticated.
+      typeof sub !== 'string' || // `sub` is used as the username, so it must be a string.
+      sub === '' || // Empty string doesn't make sense.
+      sub === '__proto__' || // Prevent prototype pollution.
+      settings.prohibited_usernames.includes(sub)) {
     // Out of an abundance of caution, clear out the old state, nonce, and userinfo (if present) to
     // force regeneration.
     delete session.ep_openid_connect;
