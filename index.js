@@ -5,8 +5,7 @@ const {URL} = require('url');
 const {Issuer, generators} = require('openid-client');
 const authorManager = require('ep_etherpad-lite/node/db/AuthorManager');
 
-const pluginName = 'ep_openid_connect';
-const logger = log4js.getLogger(pluginName);
+const logger = log4js.getLogger('ep_openid_connect');
 const settings = {
   displayname_claim: 'name',
   response_types: ['code'],
@@ -15,7 +14,7 @@ const settings = {
 };
 let oidcClient = null;
 
-const ep = (endpoint) => `/${pluginName}/${endpoint}`;
+const ep = (endpoint) => `/ep_openid_connect/${endpoint}`;
 const endpointUrl = (endpoint) => new URL(ep(endpoint).substr(1), settings.base_url).toString();
 
 const discoverIssuer = async (issuerUrl) => {
@@ -54,21 +53,22 @@ const getIssuer = async (settings) => {
   return new Issuer(settings.issuer_metadata);
 };
 
-exports.loadSettings = async (hookName, {settings: {[pluginName]: config = {}}}) => {
+exports.loadSettings = async (hookName, {settings: {ep_openid_connect: config = {}}}) => {
   Object.assign(settings, config);
   for (const setting of ['base_url', 'client_id', 'client_secret']) {
     if (!settings[setting]) {
-      logger.error(`Required setting missing from settings.json: ${pluginName}.${setting}`);
+      logger.error(`Required setting missing from settings.json: ep_openid_connect.${setting}`);
       return;
     }
   }
   if (!settings.issuer && !settings.issuer_metadata) {
-    logger.error(`Either ${pluginName}.issuer or ${pluginName}.issuer_metadata must be set`);
+    logger.error(
+        'Either ep_openid_connect.issuer or ep_openid_connect.issuer_metadata must be set');
     return;
   }
   if (settings.issuer && settings.issuer_metadata) {
-    logger.warn(
-        `Ignoring ${pluginName}.issuer_metadata setting because ${pluginName}.issuer is set`);
+    logger.warn('Ignoring ep_openid_connect.issuer_metadata setting ' +
+                'because ep_openid_connect.issuer is set');
   }
   // Make sure base_url ends with '/' so that relative URLs are appended:
   if (!settings.base_url.endsWith('/')) settings.base_url += '/';
@@ -84,7 +84,7 @@ exports.loadSettings = async (hookName, {settings: {[pluginName]: config = {}}})
 exports.clientVars = (hookName, context) => {
   if (oidcClient == null) return;
   const {permit_displayname_change} = settings;
-  return {[pluginName]: {permit_displayname_change}};
+  return {ep_openid_connect: {permit_displayname_change}};
 };
 
 exports.expressCreateServer = (hookName, {app}) => {
@@ -94,7 +94,7 @@ exports.expressCreateServer = (hookName, {app}) => {
     logger.debug(`Processing ${req.url}`);
     (async () => {
       const params = oidcClient.callbackParams(req);
-      const oidcSession = req.session[pluginName] || {};
+      const oidcSession = req.session.ep_openid_connect || {};
       const {authParams} = oidcSession;
       if (authParams == null) throw new Error('no authentication paramters found in session state');
       const tokenset = await oidcClient.callback(endpointUrl('callback'), params, authParams);
@@ -117,8 +117,8 @@ exports.expressCreateServer = (hookName, {app}) => {
   });
   app.get(ep('login'), (req, res, next) => {
     logger.debug(`Processing ${req.url}`);
-    if (req.session[pluginName] == null) req.session[pluginName] = {};
-    const oidcSession = req.session[pluginName];
+    if (req.session.ep_openid_connect == null) req.session.ep_openid_connect = {};
+    const oidcSession = req.session.ep_openid_connect;
     oidcSession.next = req.query.redirect_uri || settings.base_url;
     oidcSession.authParams = {nonce: generators.nonce(), state: generators.state()};
     res.redirect(oidcClient.authorizationUrl(oidcSession.authParams));
@@ -130,12 +130,12 @@ exports.authenticate = (hookName, {req, res, users}) => {
   if (oidcClient == null) return;
   logger.debug('authenticate hook for', req.url);
   const {session} = req;
-  const {[pluginName]: {userinfo = {}} = {}} = session;
+  const {ep_openid_connect: {userinfo = {}} = {}} = session;
   const {sub} = userinfo;
   if (sub == null) {
     // Out of an abundance of caution, clear out the old state, nonce, and userinfo (if present) to
     // force regeneration.
-    delete session[pluginName];
+    delete session.ep_openid_connect;
     // Authn failed. Let another plugin try to authenticate the user.
     return;
   }
