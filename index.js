@@ -140,12 +140,11 @@ exports.authenticate = (hookName, {req, res, users}) => {
   if (oidcClient == null) return;
   logger.debug('authenticate hook for', req.url);
   const {ep_openid_connect: {userinfo = {}} = {}} = req.session;
-  const {sub} = userinfo;
-  if (sub == null || // Nullish means the user isn't authenticated.
-      typeof sub !== 'string' || // `sub` is used as the username, so it must be a string.
-      sub === '' || // Empty string doesn't make sense.
-      sub === '__proto__' || // Prevent prototype pollution.
-      settings.prohibited_usernames.includes(sub)) {
+  if (userinfo.sub == null || // Nullish means the user isn't authenticated.
+      typeof userinfo.sub !== 'string' || // `sub` is used as the username, so it must be a string.
+      userinfo.sub === '' || // Empty string doesn't make sense.
+      userinfo.sub === '__proto__' || // Prevent prototype pollution.
+      settings.prohibited_usernames.includes(userinfo.sub)) {
     // Out of an abundance of caution, clear out the old state, nonce, and userinfo (if present) to
     // force regeneration.
     delete req.session.ep_openid_connect;
@@ -154,8 +153,8 @@ exports.authenticate = (hookName, {req, res, users}) => {
   }
   // Successfully authenticated.
   logger.info('Successfully authenticated user with userinfo:', userinfo);
-  req.session.user = users[sub];
-  if (req.session.user == null) req.session.user = users[sub] = {};
+  req.session.user = users[userinfo.sub];
+  if (req.session.user == null) req.session.user = users[userinfo.sub] = {};
   for (const [propName, descriptor] of Object.entries(settings.user_properties)) {
     if (descriptor.claim != null && descriptor.claim in userinfo) {
       req.session.user[propName] = userinfo[descriptor.claim];
