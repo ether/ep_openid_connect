@@ -139,9 +139,9 @@ exports.expressCreateServer = (hookName, {app}) => {
 exports.authenticate = (hookName, {req, res, users}) => {
   if (oidcClient == null) return;
   logger.debug('authenticate hook for', req.url);
-  const {ep_openid_connect: {userinfo = {}} = {}} = req.session;
-  if (userinfo.sub == null || // Nullish means the user isn't authenticated.
-      typeof userinfo.sub !== 'string' || // `sub` is used as the username, so it must be a string.
+  const {ep_openid_connect: {userinfo} = {}} = req.session;
+  if (userinfo == null || // Nullish means the user isn't authenticated.
+      typeof userinfo.sub !== 'string' || // 'sub' claim must exist as a string per OIDC spec.
       userinfo.sub === '' || // Empty string doesn't make sense.
       userinfo.sub === '__proto__' || // Prevent prototype pollution.
       settings.prohibited_usernames.includes(userinfo.sub)) {
