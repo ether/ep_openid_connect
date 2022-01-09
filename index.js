@@ -139,8 +139,7 @@ exports.expressCreateServer = (hookName, {app}) => {
 exports.authenticate = (hookName, {req, res, users}) => {
   if (oidcClient == null) return;
   logger.debug('authenticate hook for', req.url);
-  const {session} = req;
-  const {ep_openid_connect: {userinfo = {}} = {}} = session;
+  const {ep_openid_connect: {userinfo = {}} = {}} = req.session;
   const {sub} = userinfo;
   if (sub == null || // Nullish means the user isn't authenticated.
       typeof sub !== 'string' || // `sub` is used as the username, so it must be a string.
@@ -149,22 +148,22 @@ exports.authenticate = (hookName, {req, res, users}) => {
       settings.prohibited_usernames.includes(sub)) {
     // Out of an abundance of caution, clear out the old state, nonce, and userinfo (if present) to
     // force regeneration.
-    delete session.ep_openid_connect;
+    delete req.session.ep_openid_connect;
     // Authn failed. Let another plugin try to authenticate the user.
     return;
   }
   // Successfully authenticated.
   logger.info('Successfully authenticated user with userinfo:', userinfo);
-  session.user = users[sub];
-  if (session.user == null) session.user = users[sub] = {};
+  req.session.user = users[sub];
+  if (req.session.user == null) req.session.user = users[sub] = {};
   for (const [propName, descriptor] of Object.entries(settings.user_properties)) {
     if (descriptor.claim != null && descriptor.claim in userinfo) {
-      session.user[propName] = userinfo[descriptor.claim];
-    } else if ('default' in descriptor && !(propName in session.user)) {
-      session.user[propName] = descriptor.default;
+      req.session.user[propName] = userinfo[descriptor.claim];
+    } else if ('default' in descriptor && !(propName in req.session.user)) {
+      req.session.user[propName] = descriptor.default;
     }
   }
-  logger.debug('User properties:', session.user);
+  logger.debug('User properties:', req.session.user);
   return true;
 };
 
