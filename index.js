@@ -20,11 +20,17 @@ const ep = (endpoint) => `/ep_openid_connect/${endpoint}`;
 const endpointUrl = (endpoint) => new URL(ep(endpoint).substr(1), settings.base_url).toString();
 
 const validateSubClaim = (sub) => {
-  if (typeof sub !== 'string' || // 'sub' claim must exist as a string per OIDC spec.
-      sub === '' || // Empty string doesn't make sense.
-      sub === '__proto__' || // Prevent prototype pollution.
-      settings.prohibited_usernames.includes(sub)) {
-    throw new Error('invalid sub claim');
+  try {
+    if (typeof sub !== 'string' || // 'sub' claim must exist as a string per OIDC spec.
+        sub === '' || // Empty string doesn't make sense.
+        sub === '__proto__' || // Prevent prototype pollution.
+        settings.prohibited_usernames.includes(sub)) {
+      throw new Error('invalid sub claim');
+    }
+  } catch (err) {
+    err.error = 'invalid_token'; // RFC6750 section 3.1.
+    err.error_description = err.message;
+    throw err;
   }
 };
 
@@ -178,11 +184,71 @@ exports.expressCreateServer = (hookName, {app}) => {
   });
 };
 
-exports.authenticate = (hookName, {req, res, users}) => {
+const userinfoFromBearerToken = async ({headers: {authorization = ''}}) => {
+  if (!/^Bearer(?: .*)?$/.test(authorization)) return null;
+  logger.debug('checking Bearer token');
+  // RFC6749 section A.12 says that access tokens consist of characters 0x20 through 0x7E, but
+  // RFC6750 section 2.1 only allows a subset of those characters without explanation. ¯\_(ツ)_/¯
+  // Because the original token string isn't encoded before putting it in the Authenticate header,
+  // just use whatever the client sends. If it contains invalid characters, introspection will fail.
+  const [, token] = /^Bearer +(.*)/.exec(authorization) || [];
+  try {
+    if (!token) throw new Error('missing Bearer token');
+  } catch (err) {
+    err.error = 'invalid_request'; // RFC6750 section 3.1.
+    err.error_description = err.message;
+    throw err;
+  }
+  const [insp, userinfo] = await Promise.all([
+    oidcClient.introspect(token, 'access_token'),
+    oidcClient.userinfo(token),
+  ]);
+  logger.debug('token introspection data:', insp);
+  logger.debug('userinfo:', userinfo);
+  try {
+    if (!insp.active) throw new Error('Bearer token not active');
+    // RFC7662 says insp.token_type is optional, but check it if it's there.
+    if (insp.token_type != null && insp.token_type !== 'Bearer') {
+      throw new Error('token type is not Bearer');
+    }
+    // RFC7662 says insp.sub is optional, but check it if it's there.
+    if (insp.sub != null && insp.sub !== userinfo.sub) {
+      throw new Error('sub claim mismatch');
+    }
+  } catch (err) {
+    err.error = 'invalid_token'; // RFC6750 section 3.1.
+    err.error_description = err.message;
+    throw err;
+  }
+  try {
+    // RFC7662 says insp.scope is optional, but we require it so that we can check it.
+    if (insp.scope == null) throw new Error('unknown Bearer token scope');
+    const scopes = insp.scope.split(/ +/);
+    for (const scope of settings.scope) {
+      if (!scopes.includes(scope)) throw new Error(`Bearer token lacks scope ${scope}`);
+    }
+  } catch (err) {
+    err.error = 'insufficient_scope'; // RFC6750 section 3.1.
+    err.error_description = err.message;
+    throw err;
+  }
+  validateSubClaim(userinfo.sub);
+  return userinfo;
+};
+
+exports.authenticate = async (hookName, {req, res, users}) => {
   if (oidcClient == null) return;
   logger.debug('authenticate hook for', req.url);
-  const {ep_openid_connect: {userinfo} = {}} = req.session;
-  if (userinfo == null) { // Nullish means the user isn't authenticated.
+  let {ep_openid_connect: {userinfo} = {}} = req.session;
+  try {
+    if (userinfo == null) userinfo = await userinfoFromBearerToken(req);
+    if (userinfo == null) throw new Error('not authenticated');
+  } catch (err) {
+    logger.debug(`authentication failure: ${err}`);
+    // oidcClient sometimes throws errors with `.error*` properties that can (and should) be
+    // returned in the WWW-Authenticate header. The code above also sets those properties in thrown
+    // exceptions. Save the error so we can use those properties if present.
+    res.locals.ep_openid_connect = {err};
     // Out of an abundance of caution, clear out the old state, nonce, and userinfo (if present) to
     // force regeneration.
     delete req.session.ep_openid_connect;
@@ -206,34 +272,20 @@ exports.authenticate = (hookName, {req, res, users}) => {
 
 exports.authnFailure = (hookName, {req, res}) => {
   if (oidcClient == null) return;
+  const wwwAuthenticateFields = {
+    realm: 'ep_openid_connect',
+    scope: settings.scope.join(' '),
+  };
+  // Include the special error properties from the thrown error object, if present.
+  const {ep_openid_connect: {err = {}} = {}} = res.locals;
+  for (const field of ['error', 'error_description', 'error_uri']) {
+    if (typeof err[field] === 'string') wwwAuthenticateFields[field] = err[field];
+  }
+  const fieldsStr = Object.entries(wwwAuthenticateFields).map(([k, v]) => ` ${k}="${v}"`).join('');
+  res.header('WWW-Authenticate', `Bearer${fieldsStr}`);
   // Normally the user is redirected to the login page which would then redirect the user back once
   // authenticated. For non-GET requests, send a 401 instead because users can't be redirected back.
   // Also send a 401 if an Authorization header is present to facilitate API error handling.
-  //
-  // 401 is the status that most closely matches the desired semantics. However, RFC7235 section
-  // 3.1 says, "The server generating a 401 response MUST send a WWW-Authenticate header field
-  // containing at least one challenge applicable to the target resource." Etherpad uses a token
-  // (signed session identifier) transmitted via cookie for authentication, but there is no
-  // standard authentication scheme name for that. So we use a non-standard name here.
-  //
-  // We could theoretically implement Bearer authorization (RFC6750), but it's unclear to me how
-  // to do this correctly and securely:
-  //   * The userinfo endpoint is meant for the OAuth client, not the resource server, so it
-  //     shouldn't be used to look up claims.
-  //   * In general, access tokens might be opaque (not JWTs) so we can't get claims by parsing
-  //     them.
-  //   * The token introspection endpoint should return scope and subject (I think?), but probably
-  //     not claims.
-  //   * If claims can't be used to convey access level, how is it conveyed? Scope? Resource
-  //     indicators (RFC8707)?
-  //   * How is intended audience checked? Or is introspection guaranteed to do that for us?
-  //   * Should tokens be limited to a particular pad?
-  //   * Bearer tokens are only meant to convey authorization; authentication is handled by the
-  //     authorization server. Should Bearer tokens be processed during the authorize hook?
-  //   * How should bearer authentication interact with authorization plugins?
-  //   * How should bearer authentication interact with plugins that add new endpoints?
-  //   * Would we have to implement our own OAuth server to issue access tokens?
-  res.header('WWW-Authenticate', 'Etherpad');
   if (!['GET', 'HEAD'].includes(req.method) || req.headers.authorization) {
     res.status(401).end();
     return true;
