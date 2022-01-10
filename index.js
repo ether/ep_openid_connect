@@ -114,9 +114,9 @@ exports.expressCreateServer = (hookName, {app}) => {
       logger.debug(`Processing ${req.url}`);
       const params = oidcClient.callbackParams(req);
       const oidcSession = req.session.ep_openid_connect || {};
-      if (oidcSession.authParams == null) throw new Error('missing authentication paramters');
+      if (oidcSession.callbackChecks == null) throw new Error('missing authentication checks');
       const tokenset =
-          await oidcClient.callback(endpointUrl('callback'), params, oidcSession.authParams);
+          await oidcClient.callback(endpointUrl('callback'), params, oidcSession.callbackChecks);
       const userinfo = await oidcClient.userinfo(tokenset);
       validateSubClaim(userinfo.sub);
       // The user has successfully authenticated, but don't set req.session.user here -- do it in
@@ -130,7 +130,7 @@ exports.expressCreateServer = (hookName, {app}) => {
       res.redirect(oidcSession.next || settings.base_url);
       // Defer deletion of state until success so that the user can reload the page to retry after a
       // transient backchannel failure.
-      delete oidcSession.authParams;
+      delete oidcSession.callbackChecks;
       delete oidcSession.next;
     } catch (err) {
       return next(err);
@@ -141,12 +141,21 @@ exports.expressCreateServer = (hookName, {app}) => {
     if (req.session.ep_openid_connect == null) req.session.ep_openid_connect = {};
     const oidcSession = req.session.ep_openid_connect;
     oidcSession.next = req.query.redirect_uri || settings.base_url;
-    oidcSession.authParams = {
+    const commonParams = {
       nonce: generators.nonce(),
       scope: settings.scope.join(' '),
       state: generators.state(),
     };
-    res.redirect(oidcClient.authorizationUrl(oidcSession.authParams));
+    oidcSession.callbackChecks = {
+      ...commonParams,
+      code_verifier: generators.codeVerifier(), // RFC7636
+    };
+    res.redirect(oidcClient.authorizationUrl({
+      ...commonParams,
+      // RFC7636
+      code_challenge: generators.codeChallenge(oidcSession.callbackChecks.code_verifier),
+      code_challenge_method: 'S256',
+    }));
   });
   app.get(ep('logout'), (req, res) => req.session.destroy(() => res.redirect(settings.base_url)));
 };
