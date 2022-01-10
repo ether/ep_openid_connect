@@ -103,9 +103,9 @@ exports.expressCreateServer = (hookName, {app}) => {
       logger.debug(`Processing ${req.url}`);
       const params = oidcClient.callbackParams(req);
       const oidcSession = req.session.ep_openid_connect || {};
-      const {authParams} = oidcSession;
-      if (authParams == null) throw new Error('no authentication paramters found in session state');
-      const tokenset = await oidcClient.callback(endpointUrl('callback'), params, authParams);
+      if (oidcSession.authParams == null) throw new Error('missing authentication paramters');
+      const tokenset =
+          await oidcClient.callback(endpointUrl('callback'), params, oidcSession.authParams);
       oidcSession.userinfo = await oidcClient.userinfo(tokenset);
       // The user has successfully authenticated, but don't set req.session.user here -- do it in
       // the authenticate hook so that Etherpad can log the authentication success. However, DO "log
