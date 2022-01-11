@@ -212,4 +212,10 @@ describe(__filename, function () {
         .expect(303)
         .expect('location', new URL('/ep_openid_connect/login', common.baseUrl).toString());
   });
+
+  it('HTTP PUT gives 401 instead of redirect', async function () {
+    await agent.put(common.baseUrl)
+        .expect(401)
+        .expect('www-authenticate', 'Etherpad');
+  });
 });

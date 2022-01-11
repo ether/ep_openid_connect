@@ -206,6 +206,37 @@ exports.authenticate = (hookName, {req, res, users}) => {
 
 exports.authnFailure = (hookName, {req, res}) => {
   if (oidcClient == null) return;
+  // Normally the user is redirected to the login page which would then redirect the user back once
+  // authenticated. For non-GET requests, send a 401 instead because users can't be redirected back.
+  //
+  // 401 is the status that most closely matches the desired semantics. However, RFC7235 section
+  // 3.1 says, "The server generating a 401 response MUST send a WWW-Authenticate header field
+  // containing at least one challenge applicable to the target resource." Etherpad uses a token
+  // (signed session identifier) transmitted via cookie for authentication, but there is no
+  // standard authentication scheme name for that. So we use a non-standard name here.
+  //
+  // We could theoretically implement Bearer authorization (RFC6750), but it's unclear to me how
+  // to do this correctly and securely:
+  //   * The userinfo endpoint is meant for the OAuth client, not the resource server, so it
+  //     shouldn't be used to look up claims.
+  //   * In general, access tokens might be opaque (not JWTs) so we can't get claims by parsing
+  //     them.
+  //   * The token introspection endpoint should return scope and subject (I think?), but probably
+  //     not claims.
+  //   * If claims can't be used to convey access level, how is it conveyed? Scope? Resource
+  //     indicators (RFC8707)?
+  //   * How is intended audience checked? Or is introspection guaranteed to do that for us?
+  //   * Should tokens be limited to a particular pad?
+  //   * Bearer tokens are only meant to convey authorization; authentication is handled by the
+  //     authorization server. Should Bearer tokens be processed during the authorize hook?
+  //   * How should bearer authentication interact with authorization plugins?
+  //   * How should bearer authentication interact with plugins that add new endpoints?
+  //   * Would we have to implement our own OAuth server to issue access tokens?
+  res.header('WWW-Authenticate', 'Etherpad');
+  if (!['GET', 'HEAD'].includes(req.method)) {
+    res.status(401).end();
+    return true;
+  }
   if (req.session.ep_openid_connect == null) req.session.ep_openid_connect = {};
   req.session.ep_openid_connect.next = new URL(req.url.slice(1), settings.base_url).toString();
   res.redirect(303, endpointUrl('login'));
