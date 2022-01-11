@@ -135,7 +135,7 @@ exports.expressCreateServer = (hookName, {app}) => {
       // userinfo should not be stored in req.session until after all checks have passed. (Otherwise
       // it would be too easy to accidentally introduce a vulnerability.)
       oidcSession.userinfo = userinfo;
-      res.redirect(oidcSession.next || settings.base_url);
+      res.redirect(303, oidcSession.next || settings.base_url);
       // Defer deletion of state until success so that the user can reload the page to retry after a
       // transient backchannel failure.
       delete oidcSession.callbackChecks;
@@ -161,7 +161,7 @@ exports.expressCreateServer = (hookName, {app}) => {
       ...commonParams,
       code_verifier: generators.codeVerifier(), // RFC7636
     };
-    res.redirect(oidcClient.authorizationUrl({
+    res.redirect(303, oidcClient.authorizationUrl({
       ...commonParams,
       // RFC7636
       code_challenge: generators.codeChallenge(oidcSession.callbackChecks.code_verifier),
@@ -174,7 +174,7 @@ exports.expressCreateServer = (hookName, {app}) => {
       logger.warn('Not configured; ignoring request.');
       return next();
     }
-    req.session.destroy(() => res.redirect(settings.base_url));
+    req.session.destroy(() => res.redirect(303, settings.base_url));
   });
 };
 
@@ -208,7 +208,7 @@ exports.authnFailure = (hookName, {req, res}) => {
   if (oidcClient == null) return;
   if (req.session.ep_openid_connect == null) req.session.ep_openid_connect = {};
   req.session.ep_openid_connect.next = new URL(req.url.slice(1), settings.base_url).toString();
-  res.redirect(endpointUrl('login'));
+  res.redirect(303, endpointUrl('login'));
   return true;
 };
 

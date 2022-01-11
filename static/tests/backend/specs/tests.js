@@ -64,13 +64,13 @@ describe(__filename, function () {
 
   it('not logged in redirects to login endpoint', async function () {
     await agent.get(common.baseUrl)
-        .expect(302)
+        .expect(303)
         .expect('location', new URL('/ep_openid_connect/login', common.baseUrl).toString());
   });
 
   it('login endpoint redirects to authorization URL', async function () {
     await agent.get(new URL('/ep_openid_connect/login', common.baseUrl))
-        .expect(302)
+        .expect(303)
         .expect('location', /.*/)
         .expect((res) => {
           assert(res.headers.location.startsWith(`${new URL('/auth', issuer)}?`));
@@ -205,11 +205,11 @@ describe(__filename, function () {
     assert.equal(res.request.url, url);
     assert.equal(res.status, 200);
     await agent.get(new URL('/ep_openid_connect/logout', common.baseUrl))
-        .expect(302)
+        .expect(303)
         .expect('location', new URL('/', common.baseUrl).toString());
     // Visiting any page that requires authentication should now redirect to the login page.
     await agent.get(new URL('/', common.baseUrl))
-        .expect(302)
+        .expect(303)
         .expect('location', new URL('/ep_openid_connect/login', common.baseUrl).toString());
   });
 });

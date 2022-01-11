@@ -6,7 +6,7 @@ const common = require('ep_etherpad-lite/tests/backend/common');
 const logger = common.logger;
 
 const followRedirects = async (agent, res) => {
-  if (![302, 303].includes(res.status)) return res;
+  if (res.status !== 303) return res;
   const url = new URL(res.headers.location, res.request.url);
   logger.debug(`redirected to ${url}`);
   return await followRedirects(agent, await agent.get(url));
