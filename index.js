@@ -19,6 +19,15 @@ let oidcClient = null;
 const ep = (endpoint) => `/ep_openid_connect/${endpoint}`;
 const endpointUrl = (endpoint) => new URL(ep(endpoint).substr(1), settings.base_url).toString();
 
+const validateSubClaim = (sub) => {
+  if (typeof sub !== 'string' || // 'sub' claim must exist as a string per OIDC spec.
+      sub === '' || // Empty string doesn't make sense.
+      sub === '__proto__' || // Prevent prototype pollution.
+      settings.prohibited_usernames.includes(sub)) {
+    throw new Error('invalid sub claim');
+  }
+};
+
 const discoverIssuer = async (issuerUrl) => {
   issuerUrl = new URL(issuerUrl);
   // https://openid.net/specs/openid-connect-discovery-1_0.html#IssuerDiscovery says that the URI
@@ -99,6 +108,8 @@ exports.expressCreateServer = (hookName, {app}) => {
   if (oidcClient == null) return;
   logger.debug('Configuring auth routes');
   app.get(ep('callback'), async (req, res, next) => {
+    // This handler MUST NOT redirect to a page that requires authentication if there is a problem,
+    // otherwise the user could be caught in an infinite redirect loop.
     try {
       logger.debug(`Processing ${req.url}`);
       const params = oidcClient.callbackParams(req);
@@ -106,12 +117,16 @@ exports.expressCreateServer = (hookName, {app}) => {
       if (oidcSession.authParams == null) throw new Error('missing authentication paramters');
       const tokenset =
           await oidcClient.callback(endpointUrl('callback'), params, oidcSession.authParams);
-      oidcSession.userinfo = await oidcClient.userinfo(tokenset);
+      const userinfo = await oidcClient.userinfo(tokenset);
+      validateSubClaim(userinfo.sub);
       // The user has successfully authenticated, but don't set req.session.user here -- do it in
       // the authenticate hook so that Etherpad can log the authentication success. However, DO "log
       // out" the previous user to force the authenticate hook to run in case the user was already
       // authenticated as someone else.
       delete req.session.user;
+      // userinfo should not be stored in req.session until after all checks have passed. (Otherwise
+      // it would be too easy to accidentally introduce a vulnerability.)
+      oidcSession.userinfo = userinfo;
       res.redirect(oidcSession.next || settings.base_url);
       // Defer deletion of state until success so that the user can reload the page to retry after a
       // transient backchannel failure.
@@ -140,11 +155,7 @@ exports.authenticate = (hookName, {req, res, users}) => {
   if (oidcClient == null) return;
   logger.debug('authenticate hook for', req.url);
   const {ep_openid_connect: {userinfo} = {}} = req.session;
-  if (userinfo == null || // Nullish means the user isn't authenticated.
-      typeof userinfo.sub !== 'string' || // 'sub' claim must exist as a string per OIDC spec.
-      userinfo.sub === '' || // Empty string doesn't make sense.
-      userinfo.sub === '__proto__' || // Prevent prototype pollution.
-      settings.prohibited_usernames.includes(userinfo.sub)) {
+  if (userinfo == null) { // Nullish means the user isn't authenticated.
     // Out of an abundance of caution, clear out the old state, nonce, and userinfo (if present) to
     // force regeneration.
     delete req.session.ep_openid_connect;
