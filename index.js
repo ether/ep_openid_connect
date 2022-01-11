@@ -98,9 +98,9 @@ exports.clientVars = (hookName, context) => {
 exports.expressCreateServer = (hookName, {app}) => {
   if (oidcClient == null) return;
   logger.debug('Configuring auth routes');
-  app.get(ep('callback'), (req, res, next) => {
-    logger.debug(`Processing ${req.url}`);
-    (async () => {
+  app.get(ep('callback'), async (req, res, next) => {
+    try {
+      logger.debug(`Processing ${req.url}`);
       const params = oidcClient.callbackParams(req);
       const oidcSession = req.session.ep_openid_connect || {};
       const {authParams} = oidcSession;
@@ -117,7 +117,9 @@ exports.expressCreateServer = (hookName, {app}) => {
       // transient backchannel failure.
       delete oidcSession.authParams;
       delete oidcSession.next;
-    })().catch(next);
+    } catch (err) {
+      return next(err);
+    }
   });
   app.get(ep('login'), (req, res, next) => {
     logger.debug(`Processing ${req.url}`);
