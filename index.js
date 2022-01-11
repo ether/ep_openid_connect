@@ -6,7 +6,7 @@ const {Issuer, generators} = require('openid-client');
 const authorManager = require('ep_etherpad-lite/node/db/AuthorManager');
 
 const logger = log4js.getLogger('ep_openid_connect');
-const settings = {
+const defaultSettings = {
   displayname_claim: 'name',
   response_types: ['code'],
   permit_displayname_change: false,
@@ -14,6 +14,7 @@ const settings = {
   scope: ['openid'],
   user_properties: {},
 };
+const settings = {...defaultSettings};
 let oidcClient = null;
 
 const ep = (endpoint) => `/ep_openid_connect/${endpoint}`;
@@ -230,4 +231,8 @@ exports.preAuthorize = (hookName, {req}) => {
   if (oidcClient == null) return;
   if (req.path.startsWith(ep(''))) return true;
   return;
+};
+
+exports.exportedForTestingOnly = {
+  defaultSettings,
 };
