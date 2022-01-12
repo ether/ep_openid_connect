@@ -84,7 +84,7 @@ describe(__filename, function () {
           assert.deepEqual(params.getAll('redirect_uri'),
               [new URL('/ep_openid_connect/callback', common.baseUrl).toString()]);
           assert.deepEqual(params.getAll('client_id'), [pluginSettings.client_id]);
-          assert.deepEqual(params.getAll('response_type'), [pluginSettings.response_types[0]]);
+          assert.deepEqual(params.getAll('response_type'), ['code']);
           assert.deepEqual(params.getAll('scope'), [pluginSettings.scope.join(' ')]);
           for (const param of ['code_challenge', 'nonce', 'state']) {
             assert.equal(params.getAll(param).length, 1);

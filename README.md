@@ -55,8 +55,6 @@ Etherpad's `requireAuthentication` setting must be `true`.
 * `displayname_claim` (optional; defaults to `"name"`): The default value of
   `user_properties.displayname.claim`. **Deprecated:** Set
   `user_properties.displayname.claim` instead.
-* `response_types` (optional; defaults to `["code"]`): List of OpenID Connect
-  response types.
 * `scope` (optional; defaults to `["openid"]`): List of OAuth2 scope strings.
 * `permit_displayname_change` (optional; defaults to `false`): Whether users may
   change their displayed name.

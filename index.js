@@ -8,7 +8,6 @@ const authorManager = require('ep_etherpad-lite/node/db/AuthorManager');
 const logger = log4js.getLogger('ep_openid_connect');
 const defaultSettings = {
   displayname_claim: 'name',
-  response_types: ['code'],
   permit_displayname_change: false,
   prohibited_usernames: ['admin', 'guest'],
   scope: ['openid'],
@@ -82,6 +81,10 @@ exports.loadSettings = async (hookName, {settings: {ep_openid_connect: config = 
     logger.warn('Ignoring ep_openid_connect.issuer_metadata setting ' +
                 'because ep_openid_connect.issuer is set');
   }
+  if (settings.response_types) {
+    logger.warn('Ignoring ep_openid_connect.response_types setting (it is no longer used)');
+    delete settings.response_types;
+  }
   // Make sure base_url ends with '/' so that relative URLs are appended:
   if (!settings.base_url.endsWith('/')) settings.base_url += '/';
   settings.user_properties = {
@@ -94,7 +97,7 @@ exports.loadSettings = async (hookName, {settings: {ep_openid_connect: config = 
   oidcClient = new (await getIssuer(settings)).Client({
     client_id: settings.client_id,
     client_secret: settings.client_secret,
-    response_types: settings.response_types,
+    response_types: ['code'],
     redirect_uris: [endpointUrl('callback')],
   });
   logger.info('Configured.');
