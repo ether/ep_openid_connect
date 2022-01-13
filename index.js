@@ -90,6 +90,7 @@ exports.loadSettings = async (hookName, {settings: {ep_openid_connect: config = 
     // The username property must always match the key used in settings.users.
     username: {claim: 'sub'},
   };
+  logger.debug('Settings:', {...settings, client_secret: '********'});
   oidcClient = new (await getIssuer(settings)).Client({
     client_id: settings.client_id,
     client_secret: settings.client_secret,
