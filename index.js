@@ -105,13 +105,16 @@ exports.clientVars = (hookName, context) => {
 };
 
 exports.expressCreateServer = (hookName, {app}) => {
-  if (oidcClient == null) return;
   logger.debug('Configuring auth routes');
   app.get(ep('callback'), async (req, res, next) => {
     // This handler MUST NOT redirect to a page that requires authentication if there is a problem,
     // otherwise the user could be caught in an infinite redirect loop.
     try {
       logger.debug(`Processing ${req.url}`);
+      if (oidcClient == null) {
+        logger.warn('Not configured; ignoring request.');
+        return next();
+      }
       const params = oidcClient.callbackParams(req);
       const oidcSession = req.session.ep_openid_connect || {};
       if (oidcSession.callbackChecks == null) throw new Error('missing authentication checks');
@@ -138,6 +141,10 @@ exports.expressCreateServer = (hookName, {app}) => {
   });
   app.get(ep('login'), (req, res, next) => {
     logger.debug(`Processing ${req.url}`);
+    if (oidcClient == null) {
+      logger.warn('Not configured; ignoring request.');
+      return next();
+    }
     if (req.session.ep_openid_connect == null) req.session.ep_openid_connect = {};
     const oidcSession = req.session.ep_openid_connect;
     oidcSession.next = req.query.redirect_uri || settings.base_url;
@@ -157,7 +164,14 @@ exports.expressCreateServer = (hookName, {app}) => {
       code_challenge_method: 'S256',
     }));
   });
-  app.get(ep('logout'), (req, res) => req.session.destroy(() => res.redirect(settings.base_url)));
+  app.get(ep('logout'), (req, res, next) => {
+    logger.debug(`Processing ${req.url}`);
+    if (oidcClient == null) {
+      logger.warn('Not configured; ignoring request.');
+      return next();
+    }
+    req.session.destroy(() => res.redirect(settings.base_url));
+  });
 };
 
 exports.authenticate = (hookName, {req, res, users}) => {
