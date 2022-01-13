@@ -152,7 +152,6 @@ exports.expressCreateServer = (hookName, {app}) => {
     }
     if (req.session.ep_openid_connect == null) req.session.ep_openid_connect = {};
     const oidcSession = req.session.ep_openid_connect;
-    oidcSession.next = req.query.redirect_uri || settings.base_url;
     const commonParams = {
       nonce: generators.nonce(),
       scope: settings.scope.join(' '),
@@ -207,8 +206,9 @@ exports.authenticate = (hookName, {req, res, users}) => {
 
 exports.authnFailure = (hookName, {req, res}) => {
   if (oidcClient == null) return;
-  const url = new URL(req.url.substr(1), settings.base_url).toString();
-  res.redirect(`${endpointUrl('login')}?redirect_uri=${encodeURIComponent(url)}`);
+  if (req.session.ep_openid_connect == null) req.session.ep_openid_connect = {};
+  req.session.ep_openid_connect.next = new URL(req.url.slice(1), settings.base_url).toString();
+  res.redirect(endpointUrl('login'));
   return true;
 };
 

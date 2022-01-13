@@ -63,18 +63,13 @@ describe(__filename, function () {
   });
 
   it('not logged in redirects to login endpoint', async function () {
-    const params = new URLSearchParams();
-    params.append('redirect_uri', new URL('/', common.baseUrl));
-    const wantRedirect = new URL(`/ep_openid_connect/login?${params}`, common.baseUrl).toString();
     await agent.get(common.baseUrl)
         .expect(302)
-        .expect('location', wantRedirect);
+        .expect('location', new URL('/ep_openid_connect/login', common.baseUrl).toString());
   });
 
   it('login endpoint redirects to authorization URL', async function () {
-    const params = new URLSearchParams();
-    params.append('redirect_uri', new URL('/', common.baseUrl));
-    await agent.get(new URL(`/ep_openid_connect/login?${params}`, common.baseUrl))
+    await agent.get(new URL('/ep_openid_connect/login', common.baseUrl))
         .expect(302)
         .expect('location', /.*/)
         .expect((res) => {
@@ -217,6 +212,6 @@ describe(__filename, function () {
         .expect(302)
         .expect('location', /./)
         .expect((res) => assert(res.headers.location.startsWith(
-            new URL('/ep_openid_connect/login?', common.baseUrl).toString())));
+            new URL('/ep_openid_connect/login', common.baseUrl).toString())));
   });
 });
