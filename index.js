@@ -208,6 +208,7 @@ exports.authnFailure = (hookName, {req, res}) => {
   if (oidcClient == null) return;
   // Normally the user is redirected to the login page which would then redirect the user back once
   // authenticated. For non-GET requests, send a 401 instead because users can't be redirected back.
+  // Also send a 401 if an Authorization header is present to facilitate API error handling.
   //
   // 401 is the status that most closely matches the desired semantics. However, RFC7235 section
   // 3.1 says, "The server generating a 401 response MUST send a WWW-Authenticate header field
@@ -233,7 +234,7 @@ exports.authnFailure = (hookName, {req, res}) => {
   //   * How should bearer authentication interact with plugins that add new endpoints?
   //   * Would we have to implement our own OAuth server to issue access tokens?
   res.header('WWW-Authenticate', 'Etherpad');
-  if (!['GET', 'HEAD'].includes(req.method)) {
+  if (!['GET', 'HEAD'].includes(req.method) || req.headers.authorization) {
     res.status(401).end();
     return true;
   }

@@ -218,4 +218,11 @@ describe(__filename, function () {
         .expect(401)
         .expect('www-authenticate', 'Etherpad');
   });
+
+  it('Authorization header results in 401 instead of redirect', async function () {
+    await agent.get(common.baseUrl)
+        .set('Authorization', 'Basic dXNlcm5hbWU6cGFzc3dvcmQ=')
+        .expect(401)
+        .expect('www-authenticate', 'Etherpad');
+  });
 });
