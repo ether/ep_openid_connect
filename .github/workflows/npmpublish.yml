@@ -32,6 +32,11 @@ jobs:
       - uses: actions/setup-node@v1
         with:
           node-version: 12
+          cache: 'npm'
+          cache-dependency-path: |
+            ../etherpad-lite/src/package-lock.json
+            ../etherpad-lite/src/bin/doc/package-lock.json
+            package-lock.json
       # All of ep_etherpad-lite's devDependencies are installed because the
       # plugin might do `require('ep_etherpad-lite/node_modules/${devDep}')`.
       # Eventually it would be nice to create an ESLint plugin that prohibits
@@ -62,6 +67,7 @@ jobs:
         with:
           node-version: 12
           registry-url: https://registry.npmjs.org/
+          cache: 'npm'
       - name: Bump version (patch)
         run: |
           LATEST_TAG=$(git describe --tags --abbrev=0) || exit 1
