@@ -251,8 +251,7 @@ exports.handleMessage = async (hookName, {message, socket}) => {
   if (!displayname) return;
   if (message.type === 'CLIENT_READY') {
     logger.debug(
-        `CLIENT_READY ${socket.id}: Setting username for token ${message.token} to ${displayname}`,
-    );
+        `CLIENT_READY ${socket.id}: Setting username for token ${message.token} to ${displayname}`);
     // TODO: author ID might come from session ID, not token.
     const authorId = await authorManager.getAuthor4Token(message.token);
     await authorManager.setAuthorName(authorId, displayname);
