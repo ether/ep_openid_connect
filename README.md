@@ -62,8 +62,7 @@ Etherpad's `requireAuthentication` setting must be `true`.
   strings that will trigger an authentication error if any match the `sub`
   (subject) claim from the identity provider. Use this to avoid conflicts with
   the users in the `users` setting and to avoid conflicts with other plugins
-  (such as
-  [ep\_readonly\_guest](https://github.com/ether/ep_readonly_guest#readme)).
+  (such as [ep\_guest](https://github.com/ether/ep_guest#readme)).
 * `user_properties` (optional): Object that controls the automatic creation of
   additional properties on each authenticated user's account object. See below
   for details.
@@ -196,12 +195,11 @@ provides suitable claims:
 To avoid breaking assumptions made by Etherpad, the `username` property cannot
 be altered via the `user_properties` setting.
 
-## Interaction with the ep\_readonly\_guest Plugin
+## Interaction with the ep\_guest Plugin
 
-The [ep\_readonly\_guest
-plugin](https://github.com/ether/ep_readonly_guest#readme) creates a user that
-is used for all guest accesses. It is recommended you add the username you chose
-for the guest user to the `prohibited_usernames` setting. If the identity
+The [ep\_guest](https://github.com/ether/ep_guest#readme) plugin creates a user
+that is used for all guest accesses. It is recommended you add the username you
+chose for the guest user to the `prohibited_usernames` setting. If the identity
 provider ever uses that username in the `sub` claim, you will get an obvious
 error instead of a mysterious inability to edit pads.
 
