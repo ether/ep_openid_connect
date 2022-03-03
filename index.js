@@ -87,6 +87,9 @@ exports.loadSettings = async (hookName, {settings: {ep_openid_connect: config = 
   }
   // Make sure base_url ends with '/' so that relative URLs are appended:
   if (!settings.base_url.endsWith('/')) settings.base_url += '/';
+  if ((settings.user_properties || {}).username != null) {
+    logger.warn('Ignoring ep_openid_connect.user_properties.username descriptor');
+  }
   settings.user_properties = {
     displayname: {claim: settings.displayname_claim},
     ...settings.user_properties,
