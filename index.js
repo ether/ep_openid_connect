@@ -1,10 +1,12 @@
 'use strict';
 
-const log4js = require('ep_etherpad-lite/node_modules/log4js');
 const {URL} = require('url');
 const {Issuer, generators} = require('openid-client');
 
-const logger = log4js.getLogger('ep_openid_connect');
+let logger = {};
+for (const level of ['debug', 'info', 'warn', 'error']) {
+  logger[level] = console[level].bind(console, 'ep_openid_connect:');
+}
 const defaultSettings = {
   prohibited_usernames: ['admin', 'guest'],
   scope: ['openid'],
@@ -59,6 +61,10 @@ const discoverIssuer = async (issuerUrl) => {
 const getIssuer = async (settings) => {
   if (settings.issuer) return await discoverIssuer(settings.issuer);
   return new Issuer(settings.issuer_metadata);
+};
+
+exports.init_ep_openid_connect = async (hookName, {logger: l}) => {
+  if (l != null) logger = l;
 };
 
 exports.loadSettings = async (hookName, {settings: {ep_openid_connect: config = {}}}) => {

@@ -6,6 +6,7 @@
         "authenticate": "",
         "authnFailure": "",
         "expressCreateServer": "",
+        "init_ep_openid_connect": "",
         "loadSettings": "",
         "preAuthorize": ""
       }
