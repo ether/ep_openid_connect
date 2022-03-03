@@ -1,13 +1,13 @@
 {
   "parts": [
     {
-      "name": "ep_openid_connect",
+      "name": "main",
       "hooks": {
-        "authenticate": "ep_openid_connect",
-        "authnFailure": "ep_openid_connect",
-        "expressCreateServer": "ep_openid_connect",
-        "loadSettings": "ep_openid_connect",
-        "preAuthorize": "ep_openid_connect"
+        "authenticate": "",
+        "authnFailure": "",
+        "expressCreateServer": "",
+        "loadSettings": "",
+        "preAuthorize": ""
       }
     }
   ]
