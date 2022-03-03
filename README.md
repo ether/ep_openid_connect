@@ -99,8 +99,8 @@ identity provider from gaining admin access to your Etherpad instance.
 
 ### Controlling user account object properties with `user_properties`
 
-The `user_properties` setting can be used to automatically add or change
-properties on a user's account object when the user authenticates. The
+The `user_properties` setting can be used to automatically add, remove, or
+change properties on a user's account object when the user authenticates. The
 `user_properties` setting maps a property name to a descriptor object that
 describes how the property's value is obtained:
 
@@ -110,6 +110,7 @@ describes how the property's value is obtained:
   * If the descriptor object has a `default` property and the account object
     property would otherwise be unset, the property is set to the given value.
     (Note that a property set to `undefined` is not the same as unset.)
+  * If the descriptor object is `null`, the property is removed if present.
 
 Furthermore:
 
@@ -161,7 +162,8 @@ Example:
       },
       "fixedValue": {
         "default": "fixed value"
-      }
+      },
+      "forcedUnset": null
     }
   },
 ```
@@ -174,6 +176,7 @@ The above example sets properties as follows:
   `claimName` claim if present, otherwise the property is left unset/unchanged.
 * Each user's `fixedValue` property is set to the string `"fixed value"`
   unless already set.
+* Each user's `forcedUnset` property is always deleted if present.
 * Each user's `displayname` property is set to to the value of the user's `name`
   claim if present, otherwise the property is left unset/unchanged.
 * Each user's `username` property is set to the value of the `sub` claim.

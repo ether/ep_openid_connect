@@ -310,6 +310,7 @@ describe(__filename, function () {
 
     describe('username can\'t be changed', function () {
       for (const dsc of [
+        null,
         {},
         {default: 'something else'},
         {claim: 'preferred_username'},
@@ -344,6 +345,7 @@ describe(__filename, function () {
         for (const claimValue of [undefined, null, 'claimValue']) {
           for (const cfg of [
             {},
+            {prop: null},
             {prop: {}},
             {prop: {default: 'defaultValue'}},
             {prop: {claim: 'prop'}},
@@ -353,7 +355,7 @@ describe(__filename, function () {
             const wantIn = !!(
               p.default ||
               (p.claim && claimValue !== undefined) ||
-              'prop' in user);
+              ('prop' in user && cfg.prop !== null)); // eslint-disable-line eqeqeq
             const wantValue =
                 p.claim && claimValue !== undefined ? claimValue
                 : 'prop' in user ? user.prop

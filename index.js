@@ -194,7 +194,9 @@ exports.authenticate = (hookName, {req, res, users}) => {
   req.session.user = users[userinfo.sub];
   if (req.session.user == null) req.session.user = users[userinfo.sub] = {};
   for (const [propName, descriptor] of Object.entries(settings.user_properties)) {
-    if (descriptor.claim != null && descriptor.claim in userinfo) {
+    if (descriptor == null) {
+      delete req.session.user[propName];
+    } else if (descriptor.claim != null && descriptor.claim in userinfo) {
       req.session.user[propName] = userinfo[descriptor.claim];
     } else if ('default' in descriptor && !(propName in req.session.user)) {
       req.session.user[propName] = descriptor.default;
