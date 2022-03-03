@@ -98,10 +98,57 @@ you can use the `prohibited_usernames` settings to force an authentication error
 if the `sub` claim happens to match. This is useful for preventing a malicious
 identity provider from gaining admin access to your Etherpad instance.
 
+### Controlling user account object properties with `user_properties`
+
 The `user_properties` setting can be used to automatically add or change
 properties on a user's account object when the user authenticates. The
-`user_properties` setting maps a property name to an object that describes how
-the property's value is obtained. For example:
+`user_properties` setting maps a property name to a descriptor object that
+describes how the property's value is obtained:
+
+  * If the descriptor object has a `claim` property that names an existing
+    OpenID Connect claim, the value is set to the value of the claim. (If there
+    is no such claim, `claim` has no effect.)
+  * If the descriptor object has a `default` property and the account object
+    property would otherwise be unset, the property is set to the given value.
+    (Note that a property set to `undefined` is not the same as unset.)
+
+Furthermore:
+
+  * If `user_properties` does not specifiy a descriptor for `displayname`, one
+    is added as follows (where `"name"` is the value of the `displayname_claim`
+    setting):
+
+    ```json
+      "ep_openid_connect": {
+        "user_properties": {
+          "displayname": {"claim": "name"}
+        }
+      },
+    ```
+
+    You can cancel out this default behavior by explicitly specifying an empty
+    object:
+
+    ```json
+      "ep_openid_connect": {
+        "user_properties": {
+          "displayname": {}
+        }
+      },
+    ```
+
+  * The `username` property is described as follows and cannot be overridden or
+    canceled:
+
+    ```json
+      "ep_openid_connect": {
+        "user_properties": {
+          "username": {"claim": "sub"}
+        }
+      },
+    ```
+
+Example:
 
 ```json
   "ep_openid_connect": {
@@ -128,6 +175,9 @@ The above example sets properties as follows:
   `claimName` claim if present, otherwise the property is left unset/unchanged.
 * Each user's `fixedValue` property is set to the string `"fixed value"`
   unless already set.
+* Each user's `displayname` property is set to to the value of the user's `name`
+  claim if present, otherwise the property is left unset/unchanged.
+* Each user's `username` property is set to the value of the `sub` claim.
 
 You can use this feature to control access in the OpenID Connect provider if it
 provides suitable claims:
