@@ -6,6 +6,7 @@ const common = require('ep_etherpad-lite/tests/backend/common');
 const epOpenidConnect = require('../../../../index');
 const login = require('../login');
 const padManager = require('ep_etherpad-lite/node/db/PadManager');
+const plugins = require('ep_etherpad-lite/static/js/pluginfw/plugin_defs');
 const settings = require('ep_etherpad-lite/node/utils/Settings');
 const supertest = require('supertest');
 
@@ -33,33 +34,37 @@ describe(__filename, function () {
 
   before(async function () {
     await common.init();
+    if (!plugins.hooks.clientVars) plugins.hooks.clientVars = [];
+    backup.hooks = {clientVars: plugins.hooks.clientVars};
     backup.settings = {...settings};
-    settings.requireAuthentication = true;
-    settings.requireAuthorization = false;
     provider = new OidcProvider();
     const clients =
         [{...client, redirect_uris: [new URL('/ep_openid_connect/callback', common.baseUrl)]}];
     await provider.start({clients});
-    issuer = provider.issuer;
-    pluginSettings.base_url = common.baseUrl;
-    pluginSettings.issuer = issuer;
-    await epOpenidConnect.loadSettings(
-        'loadSettings', {settings: {ep_openid_connect: pluginSettings}});
   });
 
   beforeEach(async function () {
     agent = supertest.agent('');
+    issuer = provider.issuer;
+    pluginSettings.base_url = common.baseUrl;
+    pluginSettings.issuer = issuer;
+    settings.requireAuthentication = true;
+    settings.requireAuthorization = false;
+    settings.users = {};
+    await epOpenidConnect.loadSettings(
+        'loadSettings', {settings: {ep_openid_connect: pluginSettings}});
   });
 
   afterEach(async function () {
     if (socket != null) socket.close();
     socket = null;
+    Object.assign(plugins.hooks, backup.hooks);
+    Object.assign(settings, backup.settings);
   });
 
   after(async function () {
     if (provider != null) await provider.stop();
     provider = null;
-    Object.assign(settings, backup.settings);
   });
 
   it('not logged in redirects to login endpoint', async function () {
@@ -224,5 +229,175 @@ describe(__filename, function () {
         .set('Authorization', 'Basic dXNlcm5hbWU6cGFzc3dvcmQ=')
         .expect(401)
         .expect('www-authenticate', 'Etherpad');
+  });
+
+  describe('user_properties', function () {
+    it('uses existing settings.users[username] object', async function () {
+      const wantUser = {foo: 'bar'};
+      settings.users.normalUser = wantUser;
+      const padId = common.randomString();
+      const url = new URL(`/p/${padId}`, common.baseUrl).toString();
+      const res = await login(agent, issuer, url, 'normalUser');
+      assert.equal(res.request.url, url);
+      assert.equal(res.status, 200);
+      socket = await common.connect(res);
+      const gotUserP = new Promise((resolve) => {
+        plugins.hooks.clientVars =
+            [{hook_fn: (hn, ctx) => resolve(ctx.socket.client.request.session.user)}];
+      });
+      const msg = await common.handshake(socket, padId);
+      assert.equal(msg.type, 'CLIENT_VARS', `not a CLIENT_VARS message: ${JSON.stringify(msg)}`);
+      assert.equal(settings.users.normalUser, wantUser);
+      assert.equal(settings.users.normalUser.foo, 'bar');
+      // They won't be reference equal because each request loads the user object from the session
+      // store.
+      assert.deepEqual(await gotUserP, settings.users.normalUser);
+    });
+
+    it('sets settings.users[username] to new object if missing', async function () {
+      assert(settings.users.normalUser == null);
+      const padId = common.randomString();
+      const url = new URL(`/p/${padId}`, common.baseUrl).toString();
+      const res = await login(agent, issuer, url, 'normalUser');
+      assert.equal(res.request.url, url);
+      assert.equal(res.status, 200);
+      socket = await common.connect(res);
+      const gotUserP = new Promise((resolve) => {
+        plugins.hooks.clientVars =
+            [{hook_fn: (hn, ctx) => resolve(ctx.socket.client.request.session.user)}];
+      });
+      const msg = await common.handshake(socket, padId);
+      assert.equal(msg.type, 'CLIENT_VARS', `not a CLIENT_VARS message: ${JSON.stringify(msg)}`);
+      assert(settings.users.normalUser != null);
+      // They won't be reference equal because each request loads the user object from the session
+      // store.
+      assert.deepEqual(await gotUserP, settings.users.normalUser);
+    });
+
+    it('displayname defaults to name claim', async function () {
+      assert(settings.users.normalUser == null);
+      const padId = common.randomString();
+      const url = new URL(`/p/${padId}`, common.baseUrl).toString();
+      const res = await login(agent, issuer, url, 'normalUser');
+      assert.equal(res.request.url, url);
+      assert.equal(res.status, 200);
+      assert.equal(settings.users.normalUser.displayname, 'Firstname Lastname');
+    });
+
+    it('setting empty displayname descriptor cancels default behavior', async function () {
+      assert(settings.users.normalUser == null);
+      await epOpenidConnect.loadSettings('loadSettings', {settings: {ep_openid_connect: {
+        ...pluginSettings,
+        user_properties: {displayname: {}},
+      }}});
+      const padId = common.randomString();
+      const url = new URL(`/p/${padId}`, common.baseUrl).toString();
+      const res = await login(agent, issuer, url, 'normalUser');
+      assert.equal(res.request.url, url);
+      assert.equal(res.status, 200);
+      assert(!('displayname' in settings.users.normalUser));
+    });
+
+    it('username is set to sub claim', async function () {
+      assert(settings.users.normalUser == null);
+      const padId = common.randomString();
+      const url = new URL(`/p/${padId}`, common.baseUrl).toString();
+      const res = await login(agent, issuer, url, 'normalUser');
+      assert.equal(res.request.url, url);
+      assert.equal(res.status, 200);
+      assert.equal(settings.users.normalUser.username, 'normalUser');
+    });
+
+    describe('username can\'t be changed', function () {
+      for (const dsc of [
+        {},
+        {default: 'something else'},
+        {claim: 'preferred_username'},
+        {claim: 'preferred_username', default: 'something else'},
+      ]) {
+        it(`descriptor: ${JSON.stringify(dsc)}`, async function () {
+          await epOpenidConnect.loadSettings('loadSettings', {settings: {ep_openid_connect: {
+            ...pluginSettings,
+            user_properties: {username: dsc},
+          }}});
+          const padId = common.randomString();
+          const url = new URL(`/p/${padId}`, common.baseUrl).toString();
+          const res = await login(agent, issuer, url, 'normalUser');
+          assert.equal(res.request.url, url);
+          assert.equal(res.status, 200);
+          socket = await common.connect(res);
+          const gotUserP = new Promise((resolve) => {
+            plugins.hooks.clientVars.push(
+                {hook_fn: (hn, ctx) => resolve(ctx.socket.client.request.session.user)});
+          });
+          const msg = await common.handshake(socket, padId);
+          assert.equal(
+              msg.type, 'CLIENT_VARS', `not a CLIENT_VARS message: ${JSON.stringify(msg)}`);
+          assert.equal((await gotUserP).username, 'normalUser');
+        });
+      }
+    });
+
+    describe('{settings.json, claim value, user_properties} combinations', function () {
+      const testCases = [];
+      for (const user of [{}, {prop: undefined}, {prop: null}, {prop: 'userValue'}]) {
+        for (const claimValue of [undefined, null, 'claimValue']) {
+          for (const cfg of [
+            {},
+            {prop: {}},
+            {prop: {default: 'defaultValue'}},
+            {prop: {claim: 'prop'}},
+            {prop: {claim: 'prop', default: 'defaultValue'}},
+          ]) {
+            const p = cfg.prop || {};
+            const wantIn = !!(
+              p.default ||
+              (p.claim && claimValue !== undefined) ||
+              'prop' in user);
+            const wantValue =
+                p.claim && claimValue !== undefined ? claimValue
+                : 'prop' in user ? user.prop
+                : p.default ? p.default
+                : undefined;
+            const desc =
+                `user.prop=${'prop' in user ? user.prop : '<unset>'}, ` +
+                `claimValue=${claimValue === undefined ? '<unset>' : claimValue}, ` +
+                `user_properties.prop=${'prop' in cfg ? JSON.stringify(cfg.prop) : '<unset>'} -> ` +
+                `${wantIn ? wantValue : '<unset>'}`;
+            testCases.push({desc, user, claimValue, cfg, wantIn, wantValue});
+          }
+        }
+      }
+
+      for (const {desc, user, claimValue, cfg, wantIn, wantValue} of testCases) {
+        it(desc, async function () {
+          const username =
+              claimValue === undefined ? 'claimUnset'
+              : claimValue != null ? 'claimVal'
+              : 'claimNull';
+          settings.users[username] = {...user};
+          await epOpenidConnect.loadSettings('loadSettings', {settings: {ep_openid_connect: {
+            ...pluginSettings,
+            user_properties: cfg,
+          }}});
+          const padId = common.randomString();
+          const url = new URL(`/p/${padId}`, common.baseUrl).toString();
+          const res = await login(agent, issuer, url, username);
+          assert.equal(res.request.url, url);
+          assert.equal(res.status, 200);
+          socket = await common.connect(res);
+          const userP = new Promise((resolve) => {
+            plugins.hooks.clientVars =
+                [{hook_fn: (hn, ctx) => resolve(ctx.socket.client.request.session.user)}];
+          });
+          const msg = await common.handshake(socket, padId);
+          assert.equal(
+              msg.type, 'CLIENT_VARS', `not a CLIENT_VARS message: ${JSON.stringify(msg)}`);
+          const gotUser = await userP;
+          assert.equal('prop' in gotUser, wantIn);
+          if (wantIn) assert.equal(gotUser.prop, wantValue);
+        });
+      }
+    });
   });
 });

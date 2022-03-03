@@ -26,6 +26,8 @@ class OidcProvider {
           'etherpad_is_admin',
           'etherpad_readOnly',
           'etherpad_canCreate',
+          'name',
+          'prop',
         ],
       },
       cookies: {
@@ -38,10 +40,12 @@ class OidcProvider {
         accountId: sub,
         claims: async (use, scope, claims, rejected) => ({
           sub,
+          name: 'Firstname Lastname',
           etherpad_is_admin: sub.includes('admin'),
           etherpad_readOnly: !sub.includes('admin') && sub.includes('readOnly'),
           etherpad_canCreate:
               sub.includes('admin') || (!sub.includes('readOnly') && !sub.includes('noCreate')),
+          ...(sub === 'claimNull' ? {prop: null} : sub === 'claimVal' ? {prop: 'claimValue'} : {}),
         }),
       }),
       jwks: {
