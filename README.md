@@ -52,9 +52,6 @@ Etherpad's `requireAuthentication` setting must be `true`.
 * `base_url` (required): The public base Etherpad URL. When registering Etherpad
   with your identity provider, the redirect URL (a.k.a. callback URL) is this
   base URL plus `/ep_openid_connect/callback`.
-* `displayname_claim` (optional; defaults to `"name"`): The default value of
-  `user_properties.displayname.claim`. **Deprecated:** Set
-  `user_properties.displayname.claim` instead.
 * `scope` (optional; defaults to `["openid"]`): List of OAuth2 scope strings.
 * `permit_displayname_change` (optional; defaults to `false`): Whether users may
   change their displayed name.
@@ -115,8 +112,7 @@ describes how the property's value is obtained:
 Furthermore:
 
   * If `user_properties` does not specifiy a descriptor for `displayname`, one
-    is added as follows (where `"name"` is the value of the `displayname_claim`
-    setting):
+    is added as follows:
 
     ```json
       "ep_openid_connect": {

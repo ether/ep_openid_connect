@@ -7,7 +7,6 @@ const authorManager = require('ep_etherpad-lite/node/db/AuthorManager');
 
 const logger = log4js.getLogger('ep_openid_connect');
 const defaultSettings = {
-  displayname_claim: 'name',
   permit_displayname_change: false,
   prohibited_usernames: ['admin', 'guest'],
   scope: ['openid'],
@@ -91,7 +90,7 @@ exports.loadSettings = async (hookName, {settings: {ep_openid_connect: config = 
     logger.warn('Ignoring ep_openid_connect.user_properties.username descriptor');
   }
   settings.user_properties = {
-    displayname: {claim: settings.displayname_claim},
+    displayname: {claim: 'name'},
     ...settings.user_properties,
     // The username property must always match the key used in settings.users.
     username: {claim: 'sub'},
