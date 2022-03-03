@@ -6,3 +6,6 @@
 
   * Removed the deprecated `displayname_claim` setting. Set
     `user_properties.displayname.claim` instead.
+  * Displayname rendering was moved to the
+    [ep\_user\_displayname](https://github.com/ether/ep_user_displayname#readme)
+    plugin and the `permit_displayname_change` setting was removed.

@@ -2,15 +2,10 @@
   "parts": [
     {
       "name": "ep_openid_connect",
-      "client_hooks": {
-        "postToolbarInit": "ep_openid_connect/static/js/client"
-      },
       "hooks": {
         "authenticate": "ep_openid_connect",
         "authnFailure": "ep_openid_connect",
-        "clientVars": "ep_openid_connect",
         "expressCreateServer": "ep_openid_connect",
-        "handleMessage": "ep_openid_connect",
         "loadSettings": "ep_openid_connect",
         "preAuthorize": "ep_openid_connect"
       }

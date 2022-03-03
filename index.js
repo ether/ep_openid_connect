@@ -3,11 +3,9 @@
 const log4js = require('ep_etherpad-lite/node_modules/log4js');
 const {URL} = require('url');
 const {Issuer, generators} = require('openid-client');
-const authorManager = require('ep_etherpad-lite/node/db/AuthorManager');
 
 const logger = log4js.getLogger('ep_openid_connect');
 const defaultSettings = {
-  permit_displayname_change: false,
   prohibited_usernames: ['admin', 'guest'],
   scope: ['openid'],
   user_properties: {},
@@ -103,12 +101,6 @@ exports.loadSettings = async (hookName, {settings: {ep_openid_connect: config = 
     redirect_uris: [endpointUrl('callback')],
   });
   logger.info('Configured.');
-};
-
-exports.clientVars = (hookName, context) => {
-  if (oidcClient == null) return;
-  const {permit_displayname_change} = settings;
-  return {ep_openid_connect: {permit_displayname_change}};
 };
 
 exports.expressCreateServer = (hookName, {app}) => {
@@ -246,24 +238,6 @@ exports.authnFailure = (hookName, {req, res}) => {
   req.session.ep_openid_connect.next = new URL(req.url.slice(1), settings.base_url).toString();
   res.redirect(303, endpointUrl('login'));
   return true;
-};
-
-exports.handleMessage = async (hookName, {message, socket}) => {
-  if (oidcClient == null) return;
-  logger.debug('handleMessage hook', message);
-  const {user: {displayname} = {}} = socket.client.request.session;
-  if (!displayname) return;
-  if (message.type === 'CLIENT_READY') {
-    logger.debug(
-        `CLIENT_READY ${socket.id}: Setting username for token ${message.token} to ${displayname}`);
-    // TODO: author ID might come from session ID, not token.
-    const authorId = await authorManager.getAuthor4Token(message.token);
-    await authorManager.setAuthorName(authorId, displayname);
-  } else if (message.type === 'COLLABROOM' && message.data.type === 'USERINFO_UPDATE') {
-    if (message.data.userInfo.name !== displayname && !settings.permit_displayname_change) {
-      message.data.userInfo.name = displayname;
-    }
-  }
 };
 
 exports.preAuthorize = (hookName, {req}) => {

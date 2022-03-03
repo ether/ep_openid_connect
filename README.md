@@ -53,8 +53,6 @@ Etherpad's `requireAuthentication` setting must be `true`.
   with your identity provider, the redirect URL (a.k.a. callback URL) is this
   base URL plus `/ep_openid_connect/callback`.
 * `scope` (optional; defaults to `["openid"]`): List of OAuth2 scope strings.
-* `permit_displayname_change` (optional; defaults to `false`): Whether users may
-  change their displayed name.
 * `prohibited_usernames` (optional; defaults to `["admin", "guest"]`): List of
   strings that will trigger an authentication error if any match the `sub`
   (subject) claim from the identity provider. Use this to avoid conflicts with
@@ -75,10 +73,11 @@ will probably look something like "5374".
 Each authenticated user gets their own account object. Default properties for a
 user's account object come from the `users` setting in `settings.json`. Etherpad
 uses the `is_admin`, `readOnly`, and `canCreate` properties to control access,
-and this plugin uses the `displayname` property for the name displayed in the
-user list. For example, the following sets the default display name to
-"Firstname Lastname" and the default access to read-only for the user identified
-by "5374":
+and the
+[ep\_user\_displayname](https://github.com/ether/ep_user_displayname#readme)
+plugin uses the `displayname` property for the name displayed in the user list.
+For example, the following sets the default display name to "Firstname Lastname"
+and the default access to read-only for the user identified by "5374":
 
 ```json
   "users": {
@@ -201,6 +200,35 @@ that is used for all guest accesses. It is recommended you add the username you
 chose for the guest user to the `prohibited_usernames` setting. If the identity
 provider ever uses that username in the `sub` claim, you will get an obvious
 error instead of a mysterious inability to edit pads.
+
+## Interaction with the ep\_user\_displayname Plugin
+
+By default, this plugin sets the user's `displayname` property to the value of
+the `name` claim. The
+[ep\_user\_displayname](https://github.com/ether/ep_user_displayname#readme)
+plugin uses this property (and the `displaynameChangeable` property) to control
+the name displayed in the pad's list of users.
+
+You can change the claim used to get the displayname:
+
+```json
+  "ep_openid_connect": {
+    "user_properties": {
+      "displayname": {"claim": "nickname"}
+    }
+  },
+```
+
+Or you can cancel the default behavior:
+
+
+```json
+  "ep_openid_connect": {
+    "user_properties": {
+      "displayname": {}
+    }
+  },
+```
 
 ## Interaction with Etherpad's Built-in HTTP Basic Authentication
 
