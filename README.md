@@ -58,7 +58,7 @@ Etherpad's `requireAuthentication` setting must be `true`.
 * `scope` (optional; defaults to `["openid"]`): List of OAuth2 scope strings.
 * `permit_displayname_change` (optional; defaults to `false`): Whether users may
   change their displayed name.
-* `prohibited_usernames` (optional; defaults to `['admin', 'guest']`): List of
+* `prohibited_usernames` (optional; defaults to `["admin", "guest"]`): List of
   strings that will trigger an authentication error if any match the `sub`
   (subject) claim from the identity provider. Use this to avoid conflicts with
   the users in the `users` setting and to avoid conflicts with other plugins
