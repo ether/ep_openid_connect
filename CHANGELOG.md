@@ -1,6 +1,8 @@
 # Changelog
 
-## v3.0.0 - not yet released
+## v3.0.0
+
+Released 2022-03-04.
 
 #### Compatibility changes
 
