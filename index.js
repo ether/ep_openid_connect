@@ -1,5 +1,6 @@
 'use strict';
 
+const Ajv = require('ajv/dist/jtd');
 const {URL} = require('url');
 const {Issuer, generators} = require('openid-client');
 
@@ -12,8 +13,29 @@ const defaultSettings = {
   scope: ['openid'],
   user_properties: {},
 };
-const settings = {...defaultSettings};
+let settings;
 let oidcClient = null;
+
+const validSettings = new Ajv().compile({
+  properties: {
+    base_url: {type: 'string'},
+    client_id: {type: 'string'},
+    client_secret: {type: 'string'},
+  },
+  optionalProperties: {
+    issuer: {type: 'string'},
+    issuer_metadata: {},
+    prohibited_usernames: {elements: {type: 'string'}},
+    scope: {elements: {type: 'string'}},
+    user_properties: {values: {
+      optionalProperties: {
+        claim: {type: 'string'},
+        default: {type: 'string'},
+      },
+      nullable: true,
+    }},
+  },
+});
 
 const ep = (endpoint) => `/ep_openid_connect/${endpoint}`;
 const endpointUrl = (endpoint) => new URL(ep(endpoint).substr(1), settings.base_url).toString();
@@ -67,38 +89,33 @@ exports.init_ep_openid_connect = async (hookName, {logger: l}) => {
   if (l != null) logger = l;
 };
 
-exports.loadSettings = async (hookName, {settings: {ep_openid_connect: config = {}}}) => {
-  Object.assign(settings, config);
-  for (const setting of ['base_url', 'client_id', 'client_secret']) {
-    if (!settings[setting]) {
-      logger.error(`Required setting missing from settings.json: ep_openid_connect.${setting}`);
-      return;
-    }
-  }
-  if (!settings.issuer && !settings.issuer_metadata) {
-    logger.error(
-        'Either ep_openid_connect.issuer or ep_openid_connect.issuer_metadata must be set');
+exports.loadSettings = async (hookName, {settings: {ep_openid_connect: s = {}}}) => {
+  oidcClient = null;
+  settings = null;
+  if (!validSettings(s)) {
+    logger.error('Invalid settings. Detailed validation errors:', validSettings.errors);
     return;
   }
-  if (settings.issuer && settings.issuer_metadata) {
-    logger.warn('Ignoring ep_openid_connect.issuer_metadata setting ' +
-                'because ep_openid_connect.issuer is set');
+  if ((s.issuer == null) === (s.issuer_metadata == null)) {
+    logger.error('Either ep_openid_connect.issuer or .issuer_metadata must be set (but not both)');
+    return;
   }
-  if (settings.response_types) {
-    logger.warn('Ignoring ep_openid_connect.response_types setting (it is no longer used)');
-    delete settings.response_types;
+  if ('username' in (s.user_properties || {})) {
+    logger.error('ep_openid_connect.user_properties.username must not be set');
+    return;
   }
+  settings = {
+    ...defaultSettings,
+    ...s,
+    user_properties: {
+      displayname: {claim: 'name'},
+      ...s.user_properties,
+      // The username property must always match the key used in settings.users.
+      username: {claim: 'sub'},
+    },
+  };
   // Make sure base_url ends with '/' so that relative URLs are appended:
   if (!settings.base_url.endsWith('/')) settings.base_url += '/';
-  if ((settings.user_properties || {}).username != null) {
-    logger.warn('Ignoring ep_openid_connect.user_properties.username descriptor');
-  }
-  settings.user_properties = {
-    displayname: {claim: 'name'},
-    ...settings.user_properties,
-    // The username property must always match the key used in settings.users.
-    username: {claim: 'sub'},
-  };
   logger.debug('Settings:', {...settings, client_secret: '********'});
   oidcClient = new (await getIssuer(settings)).Client({
     client_id: settings.client_id,

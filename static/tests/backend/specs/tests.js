@@ -321,20 +321,10 @@ describe(__filename, function () {
             ...pluginSettings,
             user_properties: {username: dsc},
           }}});
-          const padId = common.randomString();
-          const url = new URL(`/p/${padId}`, common.baseUrl).toString();
-          const res = await login(agent, issuer, url, 'normalUser');
-          assert.equal(res.request.url, url);
-          assert.equal(res.status, 200);
-          socket = await common.connect(res);
-          const gotUserP = new Promise((resolve) => {
-            plugins.hooks.clientVars.push(
-                {hook_fn: (hn, ctx) => resolve(ctx.socket.client.request.session.user)});
-          });
-          const msg = await common.handshake(socket, padId);
-          assert.equal(
-              msg.type, 'CLIENT_VARS', `not a CLIENT_VARS message: ${JSON.stringify(msg)}`);
-          assert.equal((await gotUserP).username, 'normalUser');
+          // Settings validation should fail, resulting in an unconfigured state and causing
+          // Etherpad to fall back to built-in authn.
+          const res = await agent.get(new URL('/ep_openid_connect/login', common.baseUrl));
+          assert.equal(res.status, 401);
         });
       }
     });
