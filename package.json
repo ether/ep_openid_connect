@@ -23,7 +23,7 @@
   },
   "homepage": "https://github.com/ether/ep_openid_connect#readme",
   "dependencies": {
-    "ajv": "^8.10.0",
+    "ajv": "^8.11.0",
     "openid-client": "^5.1.4"
   },
   "devDependencies": {
