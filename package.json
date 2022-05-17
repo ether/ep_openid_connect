@@ -29,7 +29,7 @@
   "devDependencies": {
     "eslint": "^8.11.0",
     "eslint-config-etherpad": "^3.0.9",
-    "oidc-provider": "^7.10.6",
+    "oidc-provider": "^7.11.2",
     "supertest": "^6.2.2",
     "typescript": "^4.6.2"
   },
