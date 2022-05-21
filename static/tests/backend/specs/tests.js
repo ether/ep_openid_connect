@@ -1,5 +1,6 @@
 'use strict';
 
+const OidcClient = require('../oidc-client');
 const OidcProvider = require('../oidc-provider');
 const assert = require('assert').strict;
 const common = require('ep_etherpad-lite/tests/backend/common');
@@ -221,14 +222,106 @@ describe(__filename, function () {
   it('HTTP PUT gives 401 instead of redirect', async function () {
     await agent.put(common.baseUrl)
         .expect(401)
-        .expect('www-authenticate', 'Etherpad');
+        .expect('www-authenticate', /^Bearer /);
   });
 
   it('Authorization header results in 401 instead of redirect', async function () {
     await agent.get(common.baseUrl)
         .set('Authorization', 'Basic dXNlcm5hbWU6cGFzc3dvcmQ=')
         .expect(401)
-        .expect('www-authenticate', 'Etherpad');
+        .expect('www-authenticate', /^Bearer /);
+  });
+
+  describe('Bearer token authentication', function () {
+    let client;
+
+    before(async function () {
+      client = new OidcClient();
+      await client.start(issuer);
+    });
+
+    after(async function () {
+      if (client != null) await client.stop();
+      client = null;
+    });
+
+    it('valid token', async function () {
+      const {tokenset: {access_token}} =
+          await client.authenticate(pluginSettings.scope.join(' '), 'normalUser');
+      await agent.get(new URL('/', common.baseUrl))
+          .set('Authorization', `Bearer ${access_token}`)
+          .expect(200);
+    });
+
+    it('claims apply', async function () {
+      const {tokenset: {access_token}} =
+          await client.authenticate(pluginSettings.scope.join(' '), 'adminUser');
+      await agent.get(new URL('/admin/', common.baseUrl))
+          .set('Authorization', `Bearer ${access_token}`)
+          .expect(200);
+    });
+
+    it('missing token', async function () {
+      await agent.get(new URL('/', common.baseUrl))
+          .set('Authorization', 'Bearer ')
+          .expect(401)
+          .expect('WWW-Authenticate', /^Bearer.* error="invalid_request"/);
+    });
+
+    it('bad token value', async function () {
+      await agent.get(new URL('/', common.baseUrl))
+          .set('Authorization', 'Bearer foobarbaz')
+          .expect(401)
+          .expect('WWW-Authenticate', /^Bearer.* error="invalid_token"/);
+    });
+
+    it('expired token', async function () {
+      const {tokenset: {access_token}} =
+          await client.authenticate(pluginSettings.scope.join(' '), 'normalUser');
+      // OidcProvider is configured with 5s access token lifetime. Wait a bit over a second in case
+      // the expiration logic uses integer math with seconds instead of milliseconds.
+      await new Promise((resolve) => setTimeout(resolve, 6100));
+      await agent.get(new URL('/', common.baseUrl))
+          .set('Authorization', `Bearer ${access_token}`)
+          .expect(401)
+          .expect('WWW-Authenticate', /^Bearer.* error="invalid_token"/);
+    });
+
+    it('revoked token', async function () {
+      const {tokenset: {access_token}} =
+          await client.authenticate(pluginSettings.scope.join(' '), 'normalUser');
+      await client.revokeToken(access_token, 'access_token');
+      await agent.get(new URL('/', common.baseUrl))
+          .set('Authorization', `Bearer ${access_token}`)
+          .expect(401)
+          .expect('WWW-Authenticate', /^Bearer.* error="invalid_token"/);
+    });
+
+    it('wrong token type (refresh token)', async function () {
+      const {tokenset: {refresh_token}} =
+          await client.authenticate(pluginSettings.scope.join(' '), 'normalUser');
+      await agent.get(new URL('/', common.baseUrl))
+          .set('Authorization', `Bearer ${refresh_token}`)
+          .expect(401)
+          .expect('WWW-Authenticate', /^Bearer.* error="invalid_token"/);
+    });
+
+    it('wrong token type (ID token)', async function () {
+      const {tokenset: {id_token}} =
+          await client.authenticate(pluginSettings.scope.join(' '), 'normalUser');
+      await agent.get(new URL('/', common.baseUrl))
+          .set('Authorization', `Bearer ${id_token}`)
+          .expect(401)
+          .expect('WWW-Authenticate', /^Bearer.* error="invalid_token"/);
+    });
+
+    it('insufficient scope', async function () {
+      const {tokenset: {access_token}} = await client.authenticate('openid', 'normalUser');
+      await agent.get(new URL('/', common.baseUrl))
+          .set('Authorization', `Bearer ${access_token}`)
+          .expect(401)
+          .expect('WWW-Authenticate', /^Bearer.* error="insufficient_scope"/);
+    });
   });
 
   describe('user_properties', function () {
