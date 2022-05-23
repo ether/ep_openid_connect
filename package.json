@@ -27,7 +27,7 @@
     "openid-client": "^5.1.5"
   },
   "devDependencies": {
-    "eslint": "^8.11.0",
+    "eslint": "^8.16.0",
     "eslint-config-etherpad": "^3.0.9",
     "oidc-provider": "^7.10.6",
     "supertest": "^6.2.2",
