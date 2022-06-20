@@ -31,7 +31,7 @@
     "eslint-config-etherpad": "^3.0.9",
     "oidc-provider": "^7.10.6",
     "supertest": "^6.2.2",
-    "typescript": "^4.6.2"
+    "typescript": "^4.7.4"
   },
   "scripts": {
     "lint": "eslint .",
