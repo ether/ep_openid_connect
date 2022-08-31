@@ -1,8 +1,9 @@
 'use strict';
 
 const Ajv = require('ajv/dist/jtd');
-const {URL} = require('url');
-const {Issuer, generators} = require('openid-client');
+const { URL } = require('url');
+const { Issuer, generators, custom } = require('openid-client');
+const { readFileSync } = require('fs');
 
 let logger = {};
 for (const level of ['debug', 'info', 'warn', 'error']) {
@@ -18,22 +19,25 @@ let oidcClient = null;
 
 const validSettings = new Ajv().compile({
   properties: {
-    base_url: {type: 'string'},
-    client_id: {type: 'string'},
-    client_secret: {type: 'string'},
+    base_url: { type: 'string' },
+    client_id: { type: 'string' },
+    client_secret: { type: 'string' },
   },
   optionalProperties: {
-    issuer: {type: 'string'},
+    CA: { type: 'string' },
+    issuer: { type: 'string' },
     issuer_metadata: {},
-    prohibited_usernames: {elements: {type: 'string'}},
-    scope: {elements: {type: 'string'}},
-    user_properties: {values: {
-      optionalProperties: {
-        claim: {type: 'string'},
-        default: {type: 'string'},
-      },
-      nullable: true,
-    }},
+    prohibited_usernames: { elements: { type: 'string' } },
+    scope: { elements: { type: 'string' } },
+    user_properties: {
+      values: {
+        optionalProperties: {
+          claim: { type: 'string' },
+          default: { type: 'string' },
+        },
+        nullable: true,
+      }
+    },
   },
 });
 
@@ -42,9 +46,9 @@ const endpointUrl = (endpoint) => new URL(ep(endpoint).substr(1), settings.base_
 
 const validateSubClaim = (sub) => {
   if (typeof sub !== 'string' || // 'sub' claim must exist as a string per OIDC spec.
-      sub === '' || // Empty string doesn't make sense.
-      sub === '__proto__' || // Prevent prototype pollution.
-      settings.prohibited_usernames.includes(sub)) {
+    sub === '' || // Empty string doesn't make sense.
+    sub === '__proto__' || // Prevent prototype pollution.
+    settings.prohibited_usernames.includes(sub)) {
     throw new Error('invalid sub claim');
   }
 };
@@ -68,12 +72,12 @@ const discoverIssuer = async (issuerUrl) => {
     const discoveryUrl = new URL(issuerUrl);
     if (!discoveryUrl.pathname.includes('/.well-known/')) {
       discoveryUrl.pathname =
-          `${discoveryUrl.pathname.replace(/\/$/, '')}/.well-known/openid-configuration`;
+        `${discoveryUrl.pathname.replace(/\/$/, '')}/.well-known/openid-configuration`;
     }
     logger.error(
-        'Failed to discover issuer metadata via OpenID Connect Discovery ' +
-        '(https://openid.net/specs/openid-connect-discovery-1_0.html). ' +
-        `Does your issuer support Discovery? (hint: ${discoveryUrl})`);
+      'Failed to discover issuer metadata via OpenID Connect Discovery ' +
+      '(https://openid.net/specs/openid-connect-discovery-1_0.html). ' +
+      `Does your issuer support Discovery? (hint: ${discoveryUrl})`);
     throw err;
   }
   logger.info('OpenID Connect Discovery complete.');
@@ -85,11 +89,11 @@ const getIssuer = async (settings) => {
   return new Issuer(settings.issuer_metadata);
 };
 
-exports.init_ep_openid_connect = async (hookName, {logger: l}) => {
+exports.init_ep_openid_connect = async (hookName, { logger: l }) => {
   if (l != null) logger = l;
 };
 
-exports.loadSettings = async (hookName, {settings: {ep_openid_connect: s = {}}}) => {
+exports.loadSettings = async (hookName, { settings: { ep_openid_connect: s = {} } }) => {
   oidcClient = null;
   settings = null;
   if (!validSettings(s)) {
@@ -108,15 +112,27 @@ exports.loadSettings = async (hookName, {settings: {ep_openid_connect: s = {}}})
     ...defaultSettings,
     ...s,
     user_properties: {
-      displayname: {claim: 'name'},
+      displayname: { claim: 'name' },
       ...s.user_properties,
       // The username property must always match the key used in settings.users.
-      username: {claim: 'sub'},
+      username: { claim: 'sub' },
     },
   };
   // Make sure base_url ends with '/' so that relative URLs are appended:
   if (!settings.base_url.endsWith('/')) settings.base_url += '/';
-  logger.debug('Settings:', {...settings, client_secret: '********'});
+  // Configure custom CA if needed
+  if (settings.CA) {
+    var CAFile;
+    try {
+      CAFile = readFileSync(settings.CA);
+      custom.setHttpOptionsDefaults({
+        ca: [CAFile],
+      });
+    } catch (err) {
+      logger.error(`Cannot use custom CA: ${err.stack || err.message || String(err)}`)
+    }
+  }
+  logger.debug('Settings:', { ...settings, client_secret: '********' });
   oidcClient = new (await getIssuer(settings)).Client({
     client_id: settings.client_id,
     client_secret: settings.client_secret,
@@ -126,7 +142,7 @@ exports.loadSettings = async (hookName, {settings: {ep_openid_connect: s = {}}})
   logger.info('Configured.');
 };
 
-exports.expressCreateServer = (hookName, {app}) => {
+exports.expressCreateServer = (hookName, { app }) => {
   logger.debug('Configuring auth routes');
   app.get(ep('callback'), async (req, res, next) => {
     // This handler MUST NOT redirect to a page that requires authentication if there is a problem,
@@ -141,7 +157,7 @@ exports.expressCreateServer = (hookName, {app}) => {
       const oidcSession = req.session.ep_openid_connect || {};
       if (oidcSession.callbackChecks == null) throw new Error('missing authentication checks');
       const tokenset =
-          await oidcClient.callback(endpointUrl('callback'), params, oidcSession.callbackChecks);
+        await oidcClient.callback(endpointUrl('callback'), params, oidcSession.callbackChecks);
       const userinfo = await oidcClient.userinfo(tokenset);
       validateSubClaim(userinfo.sub);
       // The user has successfully authenticated, but don't set req.session.user here -- do it in
@@ -195,10 +211,10 @@ exports.expressCreateServer = (hookName, {app}) => {
   });
 };
 
-exports.authenticate = (hookName, {req, res, users}) => {
+exports.authenticate = (hookName, { req, res, users }) => {
   if (oidcClient == null) return;
   logger.debug('authenticate hook for', req.url);
-  const {ep_openid_connect: {userinfo} = {}} = req.session;
+  const { ep_openid_connect: { userinfo } = {} } = req.session;
   if (userinfo == null) { // Nullish means the user isn't authenticated.
     // Out of an abundance of caution, clear out the old state, nonce, and userinfo (if present) to
     // force regeneration.
@@ -223,7 +239,7 @@ exports.authenticate = (hookName, {req, res, users}) => {
   return true;
 };
 
-exports.authnFailure = (hookName, {req, res}) => {
+exports.authnFailure = (hookName, { req, res }) => {
   if (oidcClient == null) return;
   // Normally the user is redirected to the login page which would then redirect the user back once
   // authenticated. For non-GET requests, send a 401 instead because users can't be redirected back.
@@ -263,7 +279,7 @@ exports.authnFailure = (hookName, {req, res}) => {
   return true;
 };
 
-exports.preAuthorize = (hookName, {req}) => {
+exports.preAuthorize = (hookName, { req }) => {
   if (oidcClient == null) return;
   if (req.path.startsWith(ep(''))) return true;
   return;

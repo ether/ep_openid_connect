@@ -53,6 +53,8 @@ Etherpad's `requireAuthentication` setting must be `true`.
   with your identity provider, the redirect URL (a.k.a. callback URL) is this
   base URL plus `/ep_openid_connect/callback`.
 * `scope` (optional; defaults to `["openid"]`): List of OAuth2 scope strings.
+* `CA` (optional): Path to a custom Certificate Authority for self-signed
+  deployments.
 * `prohibited_usernames` (optional; defaults to `["admin", "guest"]`): List of
   strings that will trigger an authentication error if any match the `sub`
   (subject) claim from the identity provider. Use this to avoid conflicts with
