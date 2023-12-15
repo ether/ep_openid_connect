@@ -215,6 +215,8 @@ exports.authenticate = (hookName, {req, res, users}) => {
       delete req.session.user[propName];
     } else if (descriptor.claim != null && descriptor.claim in userinfo) {
       req.session.user[propName] = userinfo[descriptor.claim];
+    } else if (descriptor.role != null && descriptor.role in userinfo.roles) {
+      req.session.user[propName] = 'true';
     } else if ('default' in descriptor && !(propName in req.session.user)) {
       req.session.user[propName] = descriptor.default;
     }
