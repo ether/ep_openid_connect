@@ -30,6 +30,7 @@ const validSettings = new Ajv().compile({
     user_properties: {values: {
       optionalProperties: {
         claim: {type: 'string'},
+        role: {type: 'string'},
         default: {type: 'string'},
       },
       nullable: true,
