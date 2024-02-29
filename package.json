@@ -23,15 +23,15 @@
   },
   "homepage": "https://github.com/ether/ep_openid_connect#readme",
   "dependencies": {
-    "ajv": "^8.12.0",
-    "openid-client": "^5.6.4"
+    "ajv": "^8.11.0",
+    "openid-client": "^5.1.5"
   },
   "devDependencies": {
-    "eslint": "^8.56.0",
-    "eslint-config-etherpad": "^3.0.22",
-    "oidc-provider": "^8.4.5",
-    "supertest": "^6.3.4",
-    "typescript": "^4.9.5"
+    "eslint": "^8.11.0",
+    "eslint-config-etherpad": "^3.0.9",
+    "oidc-provider": "^7.10.6",
+    "supertest": "^6.2.2",
+    "typescript": "^4.6.2"
   },
   "scripts": {
     "lint": "eslint .",
@@ -42,7 +42,7 @@
     "url": "https://etherpad.org/"
   },
   "peerDependencies": {
-    "ep_etherpad-lite": ">=1.8.14"
+    "ep_etherpad-lite": ">=1.8.6"
   },
   "engines": {
     "node": ">=12.17.0"
