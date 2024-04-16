@@ -3,3 +3,4 @@
 /.ep_initialized
 /node_modules/
 /yarn-error.log
+.idea
