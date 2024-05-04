@@ -23,6 +23,7 @@
   },
   "homepage": "https://github.com/ether/ep_openid_connect#readme",
   "dependencies": {
+    "@etherpad/node-openid-client": "npm:@jsr/etherpad__node-openid-client@^0.1.0",
     "ajv": "^8.11.0",
     "openid-client": "^5.1.5"
   },

@@ -2,7 +2,7 @@
 
 const Ajv = require('ajv/dist/jtd');
 const {URL} = require('url');
-const {Issuer, generators} = require('openid-client');
+const {Issuer, generators} = require('@etherpad/node-openid-client');
 
 let logger = {};
 for (const level of ['debug', 'info', 'warn', 'error']) {
