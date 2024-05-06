@@ -183,12 +183,15 @@ provides suitable claims:
   "ep_openid_connect": {
     "scope": ["openid", "etherpad"],
     "user_properties": {
-      "is_admin": {"claim": "etherpad_is_admin"},
+      "is_admin": {"role": "etherpad_is_admin"},
       "readOnly": {"claim": "etherpad_readOnly"},
       "canCreate": {"claim": "etherpad_canCreate"}
     }
   },
 ```
+
+The `role` config sets the property to `true` if the role is found in the `roles`
+claim array.
 
 To avoid breaking assumptions made by Etherpad, the `username` property cannot
 be altered via the `user_properties` setting.
