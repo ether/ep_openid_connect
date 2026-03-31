@@ -1,6 +1,6 @@
 {
   "name": "ep_openid_connect",
-  "version": "3.0.8",
+  "version": "3.0.9",
   "description": "Etherpad plugin to authenticate users against an OpenID Connect provider.",
   "main": "index.js",
   "repository": {
@@ -24,15 +24,15 @@
   "homepage": "https://github.com/ether/ep_openid_connect#readme",
   "dependencies": {
     "@etherpad/node-openid-client": "npm:@jsr/etherpad__node-openid-client@^0.1.0",
-    "ajv": "^8.11.0",
-    "openid-client": "^5.1.5"
+    "ajv": "^8.18.0",
+    "openid-client": "^5.7.1"
   },
   "devDependencies": {
-    "eslint": "^8.57.0",
+    "eslint": "^8.57.1",
     "eslint-config-etherpad": "^4.0.4",
-    "oidc-provider": "^8.4.5",
-    "supertest": "^6.2.2",
-    "typescript": "^5.4.2"
+    "oidc-provider": "^8.8.1",
+    "supertest": "^6.3.4",
+    "typescript": "^5.9.3"
   },
   "scripts": {
     "lint": "eslint .",
