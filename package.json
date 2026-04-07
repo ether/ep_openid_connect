@@ -1,6 +1,6 @@
 {
   "name": "ep_openid_connect",
-  "version": "3.0.9",
+  "version": "3.0.10",
   "description": "Etherpad plugin to authenticate users against an OpenID Connect provider.",
   "main": "index.js",
   "repository": {
