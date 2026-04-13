@@ -35,6 +35,12 @@ class OidcProvider {
       },
       features: {
         devInteractions: {enabled: false},
+        introspection: {
+          enabled: true,
+          allowedPolicy: () => true, // Silence warning.
+        },
+        registration: {enabled: true},
+        revocation: {enabled: true},
       },
       findAccount: async (ctx, sub, token) => ({
         accountId: sub,
@@ -75,8 +81,9 @@ class OidcProvider {
         /* eslint-enable max-len */
       },
       ttl: {
+        // Short to test expiration.
+        AccessToken: 5,
         // Silence warnings.
-        AccessToken: 3600,
         Grant: 3600,
         IdToken: 3600,
         Interaction: 3600,
