@@ -55,9 +55,22 @@ jobs:
         working-directory: ./etherpad-lite
         run: bin/installDeps.sh
       - name: Install plugin
-        working-directory: ./etherpad-lite
         run: |
-          pnpm run plugins i --path  ../../plugin
+          # Copy .npmrc to etherpad-lite so pnpm can resolve JSR-scoped packages
+          cp plugin/.npmrc etherpad-lite/.npmrc 2>/dev/null || true
+          cd etherpad-lite
+          # Install plugin; if live-plugin-manager fails on npm: aliases,
+          # fall back to manual symlink + pnpm install
+          if ! pnpm run plugins i --path ../../plugin 2>/dev/null; then
+            echo "live-plugin-manager failed, installing plugin manually..."
+            PLUGIN_NAME=$(node -p "require('../plugin/package.json').name")
+            PLUGIN_PKG_DIR="src/plugin_packages/.versions/${PLUGIN_NAME}@$(node -p "require('../plugin/package.json').version")"
+            mkdir -p "$PLUGIN_PKG_DIR"
+            rsync -a --exclude node_modules ../plugin/ "$PLUGIN_PKG_DIR/"
+            cd "$PLUGIN_PKG_DIR" && pnpm install --no-frozen-lockfile && cd -
+            # Symlink into node_modules so mocha can find the tests
+            ln -sf "$(pwd)/$PLUGIN_PKG_DIR" "src/node_modules/$PLUGIN_NAME"
+          fi
       -
         name: Run the backend tests
         working-directory: ./etherpad-lite/src
