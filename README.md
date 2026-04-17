@@ -1,6 +1,6 @@
 ![Publish Status](https://github.com/ether/ep_openid_connect/workflows/Node.js%20Package/badge.svg) [![Backend Tests Status](https://github.com/ether/ep_openid_connect/actions/workflows/test-and-release.yml/badge.svg)](https://github.com/ether/ep_openid_connect/actions/workflows/test-and-release.yml)
 
-# ep\_openid\_connect
+# OpenID Connect Authentication for Etherpad
 
 Etherpad plugin to authenticate users against an OpenID Connect provider.
 
