@@ -5,8 +5,13 @@ const common = require('ep_etherpad-lite/tests/backend/common');
 
 const logger = common.logger;
 
+const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 const followRedirects = async (agent, res) => {
-  if (res.status !== 303) return res;
+  // Older oidc-provider used 303 for auth→interaction redirects; recent
+  // releases use 302 (and 307/308 for POST-safe redirects). Follow any
+  // redirect-class status so the test harness doesn't stop at `/auth?...`
+  // when it should have continued on to `/interaction/...`.
+  if (!REDIRECT_STATUSES.has(res.status)) return res;
   const url = new URL(res.headers.location, res.request.url);
   logger.debug(`redirected to ${url}`);
   return await followRedirects(agent, await agent.get(url));
