@@ -22,7 +22,7 @@ importers:
         specifier: ^4.0.5
         version: 4.0.5(eslint@8.57.1)(typescript@5.9.3)
       oidc-provider:
-        specifier: ^8.8.1
+        specifier: ^8.5.3
         version: 8.8.1
       supertest:
         specifier: ^6.3.4
