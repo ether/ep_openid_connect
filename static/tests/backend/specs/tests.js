@@ -36,7 +36,16 @@ describe(__filename, function () {
     await common.init();
     if (!plugins.hooks.clientVars) plugins.hooks.clientVars = [];
     backup.hooks = {clientVars: plugins.hooks.clientVars};
-    backup.settings = {...settings};
+    // Only capture the fields the tests actually mutate. Etherpad's
+    // settings module now exposes several read-only getters (e.g.
+    // abiwordAvailable), which made the old `{...settings}` + Object.assign
+    // cleanup throw "Cannot set property … of #<Object> which has only a
+    // getter".
+    backup.settings = {
+      requireAuthentication: settings.requireAuthentication,
+      requireAuthorization: settings.requireAuthorization,
+      users: settings.users,
+    };
     provider = new OidcProvider();
     const clients =
         [{...client, redirect_uris: [new URL('/ep_openid_connect/callback', common.baseUrl)]}];
@@ -59,7 +68,11 @@ describe(__filename, function () {
     if (socket != null) socket.close();
     socket = null;
     Object.assign(plugins.hooks, backup.hooks);
-    Object.assign(settings, backup.settings);
+    // Restore only the fields we changed in beforeEach — see note in
+    // `before()` about read-only getters on the settings module.
+    settings.requireAuthentication = backup.settings.requireAuthentication;
+    settings.requireAuthorization = backup.settings.requireAuthorization;
+    settings.users = backup.settings.users;
   });
 
   after(async function () {
