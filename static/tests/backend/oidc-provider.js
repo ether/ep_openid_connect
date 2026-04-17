@@ -1,7 +1,10 @@
 'use strict';
 
-const MemoryAdapter = require('oidc-provider/lib/adapters/memory_adapter');
-const Provider = require('oidc-provider');
+// oidc-provider v8+ is ESM-only (`"type": "module"` in package.json). When
+// Node `require()`s it from a CommonJS module, the returned value is the
+// ESM namespace object, not the class itself — so `.default` is needed.
+const MemoryAdapter = require('oidc-provider/lib/adapters/memory_adapter').default;
+const Provider = require('oidc-provider').default;
 const common = require('ep_etherpad-lite/tests/backend/common');
 const http = require('http');
 const util = require('util');

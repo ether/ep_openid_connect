@@ -8,9 +8,6 @@ importers:
 
   .:
     dependencies:
-      '@etherpad/node-openid-client':
-        specifier: npm:@jsr/etherpad__node-openid-client@^0.1.0
-        version: '@jsr/etherpad__node-openid-client@0.1.0'
       ajv:
         specifier: ^8.18.0
         version: 8.18.0
@@ -75,9 +72,6 @@ packages:
   '@humanwhocodes/object-schema@2.0.3':
     resolution: {integrity: sha512-93zYdMES/c1D69yZiKDBj0V24vqNzB/koF26KPaagAfd3P/4gUlh3Dys5ogAK+Exi9QyzlD8x/08Zt7wIKcDcA==}
     deprecated: Use @eslint/object-schema instead
-
-  '@jsr/etherpad__node-openid-client@0.1.0':
-    resolution: {integrity: sha512-HPURcH7nlZ6j811lccaD/bFVCYu18UKMwEEfPJbgEu+bEUtdKqH3sX1UxQ3Mx708qYCszJHWiD9q83QtcjnVZA==, tarball: https://npm.jsr.io/~/11/@jsr/etherpad__node-openid-client/0.1.0.tgz}
 
   '@koa/cors@5.0.0':
     resolution: {integrity: sha512-x/iUDjcS90W69PryLDIMgFyV21YLTnG9zOpPXS7Bkt2b8AsY3zZsIpOLBkYr9fBcF3HbkKaER5hOBZLfpLgYNw==}
@@ -1730,10 +1724,6 @@ snapshots:
   '@humanwhocodes/module-importer@1.0.1': {}
 
   '@humanwhocodes/object-schema@2.0.3': {}
-
-  '@jsr/etherpad__node-openid-client@0.1.0':
-    dependencies:
-      jose: 4.15.9
 
   '@koa/cors@5.0.0':
     dependencies:
