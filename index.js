@@ -30,7 +30,11 @@ const validSettings = new Ajv().compile({
     user_properties: {values: {
       optionalProperties: {
         claim: {type: 'string'},
-        default: {type: 'string'},
+        // `default` is assigned verbatim to `req.session.user[propName]`,
+        // so any JSON value (boolean for is_admin/readOnly/canCreate,
+        // number, string, …) is fine. Use the JTD empty form so we don't
+        // reject non-string defaults (#100).
+        default: {},
       },
       nullable: true,
     }},
@@ -271,4 +275,5 @@ exports.preAuthorize = (hookName, {req}) => {
 
 exports.exportedForTestingOnly = {
   defaultSettings,
+  validSettings,
 };
