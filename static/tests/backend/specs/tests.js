@@ -47,8 +47,15 @@ describe(__filename, function () {
       users: settings.users,
     };
     provider = new OidcProvider();
+    // `redirect_uris` must be strings, not URL objects. oidc-provider@9.8.3
+    // copies the clients config via structuredClone() during init
+    // (initialize_clients.js:18), which throws DataCloneError on URL
+    // instances ("Cannot clone object of unsupported type"). Earlier
+    // versions tolerated URL objects because they relied on a shallow
+    // copy. Use `.href` to coerce to the string form the spec actually
+    // expects.
     const clients =
-        [{...client, redirect_uris: [new URL('/ep_openid_connect/callback', common.baseUrl)]}];
+        [{...client, redirect_uris: [new URL('/ep_openid_connect/callback', common.baseUrl).href]}];
     await provider.start({clients});
   });
 
@@ -196,8 +203,13 @@ describe(__filename, function () {
       assert.equal(res.status, 200);
     });
 
-    it('normalUser is unable to access /admin/', async function () {
-      const url = new URL('/admin/', common.baseUrl).toString();
+    it('normalUser is unable to access /admin-auth/', async function () {
+      // The admin gate moved from `/admin/` to `/admin-auth/*` when core
+      // refactored the admin UI into a public SPA — `/admin/` now serves
+      // static HTML/JS to anyone, and `webaccess.ts:60` only enforces
+      // is_admin for paths starting with `/admin-auth`. Test the gate
+      // where it actually lives now.
+      const url = new URL('/admin-auth/', common.baseUrl).toString();
       const res = await login(agent, issuer, url, 'normalUser');
       assert.equal(res.request.url, url); // Should have been redirected back after authenticating.
       assert.equal(res.status, 403);

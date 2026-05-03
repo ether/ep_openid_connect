@@ -58,6 +58,15 @@ jobs:
         name: Install Etherpad core dependencies
         working-directory: ./etherpad-lite
         run: bin/installDeps.sh
+      - name: Build admin SPA
+        # Two specs hit GET /admin/* which serves files from
+        # `src/templates/admin/`; that directory only exists after the
+        # admin Vite app is built. Without this step, the route handler
+        # 500s on file-not-found and the `admin access` describe block
+        # fails (`adminUser can access /admin/`, `normalUser is unable
+        # to access /admin/`). installDeps.sh doesn't build it.
+        working-directory: ./etherpad-lite
+        run: pnpm --filter admin run build-copy
       - name: Install plugin
         working-directory: ./etherpad-lite
         run: |
