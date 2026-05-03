@@ -203,8 +203,13 @@ describe(__filename, function () {
       assert.equal(res.status, 200);
     });
 
-    it('normalUser is unable to access /admin/', async function () {
-      const url = new URL('/admin/', common.baseUrl).toString();
+    it('normalUser is unable to access /admin-auth/', async function () {
+      // The admin gate moved from `/admin/` to `/admin-auth/*` when core
+      // refactored the admin UI into a public SPA — `/admin/` now serves
+      // static HTML/JS to anyone, and `webaccess.ts:60` only enforces
+      // is_admin for paths starting with `/admin-auth`. Test the gate
+      // where it actually lives now.
+      const url = new URL('/admin-auth/', common.baseUrl).toString();
       const res = await login(agent, issuer, url, 'normalUser');
       assert.equal(res.request.url, url); // Should have been redirected back after authenticating.
       assert.equal(res.status, 403);
