@@ -47,8 +47,15 @@ describe(__filename, function () {
       users: settings.users,
     };
     provider = new OidcProvider();
+    // `redirect_uris` must be strings, not URL objects. oidc-provider@9.8.3
+    // copies the clients config via structuredClone() during init
+    // (initialize_clients.js:18), which throws DataCloneError on URL
+    // instances ("Cannot clone object of unsupported type"). Earlier
+    // versions tolerated URL objects because they relied on a shallow
+    // copy. Use `.href` to coerce to the string form the spec actually
+    // expects.
     const clients =
-        [{...client, redirect_uris: [new URL('/ep_openid_connect/callback', common.baseUrl)]}];
+        [{...client, redirect_uris: [new URL('/ep_openid_connect/callback', common.baseUrl).href]}];
     await provider.start({clients});
   });
 
