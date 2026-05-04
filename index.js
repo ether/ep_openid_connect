@@ -2,7 +2,6 @@
 
 const Ajv = require('ajv/dist/jtd');
 const {URL} = require('url');
-const {Issuer, generators} = require('openid-client');
 
 let logger = {};
 for (const level of ['debug', 'info', 'warn', 'error']) {
@@ -14,7 +13,14 @@ const defaultSettings = {
   user_properties: {},
 };
 let settings;
-let oidcClient = null;
+let oidcConfig = null;
+// openid-client@6 is ESM-only, so it must be loaded with a dynamic import from
+// this CommonJS module. The reference is cached after the first call.
+let oidc = null;
+const loadOidc = async () => {
+  if (oidc == null) oidc = await import('openid-client');
+  return oidc;
+};
 
 const validSettings = new Ajv().compile({
   properties: {
@@ -53,23 +59,35 @@ const validateSubClaim = (sub) => {
   }
 };
 
-const discoverIssuer = async (issuerUrl) => {
-  issuerUrl = new URL(issuerUrl);
+const isHttp = (urlString) => {
+  try {
+    return new URL(urlString).protocol === 'http:';
+  } catch (e) {
+    return false;
+  }
+};
+
+const discoverConfig = async (issuerUrl, clientId, clientAuth) => {
+  const url = new URL(issuerUrl);
   // https://openid.net/specs/openid-connect-discovery-1_0.html#IssuerDiscovery says that the URI
   // must not have query or fragment components.
-  if (issuerUrl.search) {
-    throw new Error(`Unexpected query in issuer URL (${issuerUrl}): ${issuerUrl.search}`);
+  if (url.search) {
+    throw new Error(`Unexpected query in issuer URL (${url}): ${url.search}`);
   }
-  if (issuerUrl.hash) {
-    throw new Error(`Unexpected fragment in issuer URL (${issuerUrl}): ${issuerUrl.hash}`);
+  if (url.hash) {
+    throw new Error(`Unexpected fragment in issuer URL (${url}): ${url.hash}`);
   }
-  let issuer;
+  // openid-client@6 rejects http:// issuers by default; opt back in for
+  // localhost / private-network providers (matches v5 behaviour).
+  const options = url.protocol === 'http:'
+      ? {execute: [oidc.allowInsecureRequests]}
+      : undefined;
   try {
-    issuer = await Issuer.discover(issuerUrl.href);
+    return await oidc.discovery(url, clientId, undefined, clientAuth, options);
   } catch (err) {
     // The URL used to get the issuer metadata doesn't exactly follow RFC 8615; see:
     // https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderConfig
-    const discoveryUrl = new URL(issuerUrl);
+    const discoveryUrl = new URL(url);
     if (!discoveryUrl.pathname.includes('/.well-known/')) {
       discoveryUrl.pathname =
           `${discoveryUrl.pathname.replace(/\/$/, '')}/.well-known/openid-configuration`;
@@ -80,22 +98,36 @@ const discoverIssuer = async (issuerUrl) => {
         `Does your issuer support Discovery? (hint: ${discoveryUrl})`);
     throw err;
   }
-  logger.info('OpenID Connect Discovery complete.');
-  return issuer;
 };
 
-const getIssuer = async (settings) => {
-  if (settings.issuer) return await discoverIssuer(settings.issuer);
-  return new Issuer(settings.issuer_metadata);
+const buildConfig = async (settings) => {
+  // openid-client@5 defaulted the token endpoint auth method to
+  // `client_secret_basic`; v6 defaults to `client_secret_post`. Pin the
+  // method explicitly so existing IdP registrations keep working.
+  const clientAuth = oidc.ClientSecretBasic(settings.client_secret);
+  if (settings.issuer) {
+    const config =
+        await discoverConfig(settings.issuer, settings.client_id, clientAuth);
+    logger.info('OpenID Connect Discovery complete.');
+    return config;
+  }
+  const config =
+      new oidc.Configuration(settings.issuer_metadata, settings.client_id, undefined, clientAuth);
+  if (isHttp(settings.issuer_metadata && settings.issuer_metadata.issuer)) {
+    oidc.allowInsecureRequests(config);
+  }
+  return config;
 };
 
 exports.init_ep_openid_connect = async (hookName, {logger: l}) => {
   if (l != null) logger = l;
+  await loadOidc();
 };
 
 exports.loadSettings = async (hookName, {settings: {ep_openid_connect: s = {}}}) => {
-  oidcClient = null;
+  oidcConfig = null;
   settings = null;
+  await loadOidc();
   if (!validSettings(s)) {
     logger.error('Invalid settings. Detailed validation errors:', validSettings.errors);
     return;
@@ -121,12 +153,7 @@ exports.loadSettings = async (hookName, {settings: {ep_openid_connect: s = {}}})
   // Make sure base_url ends with '/' so that relative URLs are appended:
   if (!settings.base_url.endsWith('/')) settings.base_url += '/';
   logger.debug('Settings:', {...settings, client_secret: '********'});
-  oidcClient = new (await getIssuer(settings)).Client({
-    client_id: settings.client_id,
-    client_secret: settings.client_secret,
-    response_types: ['code'],
-    redirect_uris: [endpointUrl('callback')],
-  });
+  oidcConfig = await buildConfig(settings);
   logger.info('Configured.');
 };
 
@@ -137,16 +164,22 @@ exports.expressCreateServer = (hookName, {app}) => {
     // otherwise the user could be caught in an infinite redirect loop.
     try {
       logger.debug(`Processing ${req.url}`);
-      if (oidcClient == null) {
+      if (oidcConfig == null) {
         logger.warn('Not configured; ignoring request.');
         return next();
       }
-      const params = oidcClient.callbackParams(req);
       const oidcSession = req.session.ep_openid_connect || {};
       if (oidcSession.callbackChecks == null) throw new Error('missing authentication checks');
-      const tokenset =
-          await oidcClient.callback(endpointUrl('callback'), params, oidcSession.callbackChecks);
-      const userinfo = await oidcClient.userinfo(tokenset);
+      const currentUrl = new URL(req.originalUrl || req.url, settings.base_url);
+      const tokens = await oidc.authorizationCodeGrant(oidcConfig, currentUrl, {
+        expectedNonce: oidcSession.callbackChecks.nonce,
+        expectedState: oidcSession.callbackChecks.state,
+        pkceCodeVerifier: oidcSession.callbackChecks.code_verifier,
+        idTokenExpected: true,
+      });
+      const claims = tokens.claims();
+      const userinfo =
+          await oidc.fetchUserInfo(oidcConfig, tokens.access_token, claims && claims.sub);
       validateSubClaim(userinfo.sub);
       // The user has successfully authenticated, but don't set req.session.user here -- do it in
       // the authenticate hook so that Etherpad can log the authentication success. However, DO "log
@@ -165,33 +198,36 @@ exports.expressCreateServer = (hookName, {app}) => {
       return next(err);
     }
   });
-  app.get(ep('login'), (req, res, next) => {
-    logger.debug(`Processing ${req.url}`);
-    if (oidcClient == null) {
-      logger.warn('Not configured; ignoring request.');
-      return next();
+  app.get(ep('login'), async (req, res, next) => {
+    try {
+      logger.debug(`Processing ${req.url}`);
+      if (oidcConfig == null) {
+        logger.warn('Not configured; ignoring request.');
+        return next();
+      }
+      if (req.session.ep_openid_connect == null) req.session.ep_openid_connect = {};
+      const oidcSession = req.session.ep_openid_connect;
+      const code_verifier = oidc.randomPKCECodeVerifier(); // RFC7636
+      const code_challenge = await oidc.calculatePKCECodeChallenge(code_verifier);
+      const nonce = oidc.randomNonce();
+      const state = oidc.randomState();
+      oidcSession.callbackChecks = {nonce, state, code_verifier};
+      const url = oidc.buildAuthorizationUrl(oidcConfig, {
+        redirect_uri: endpointUrl('callback'),
+        scope: settings.scope.join(' '),
+        nonce,
+        state,
+        code_challenge,
+        code_challenge_method: 'S256',
+      });
+      res.redirect(303, url.toString());
+    } catch (err) {
+      return next(err);
     }
-    if (req.session.ep_openid_connect == null) req.session.ep_openid_connect = {};
-    const oidcSession = req.session.ep_openid_connect;
-    const commonParams = {
-      nonce: generators.nonce(),
-      scope: settings.scope.join(' '),
-      state: generators.state(),
-    };
-    oidcSession.callbackChecks = {
-      ...commonParams,
-      code_verifier: generators.codeVerifier(), // RFC7636
-    };
-    res.redirect(303, oidcClient.authorizationUrl({
-      ...commonParams,
-      // RFC7636
-      code_challenge: generators.codeChallenge(oidcSession.callbackChecks.code_verifier),
-      code_challenge_method: 'S256',
-    }));
   });
   app.get(ep('logout'), (req, res, next) => {
     logger.debug(`Processing ${req.url}`);
-    if (oidcClient == null) {
+    if (oidcConfig == null) {
       logger.warn('Not configured; ignoring request.');
       return next();
     }
@@ -200,7 +236,7 @@ exports.expressCreateServer = (hookName, {app}) => {
 };
 
 exports.authenticate = (hookName, {req, res, users}) => {
-  if (oidcClient == null) return;
+  if (oidcConfig == null) return;
   logger.debug('authenticate hook for', req.url);
   const {ep_openid_connect: {userinfo} = {}} = req.session;
   if (userinfo == null) { // Nullish means the user isn't authenticated.
@@ -228,7 +264,7 @@ exports.authenticate = (hookName, {req, res, users}) => {
 };
 
 exports.authnFailure = (hookName, {req, res}) => {
-  if (oidcClient == null) return;
+  if (oidcConfig == null) return;
   // Normally the user is redirected to the login page which would then redirect the user back once
   // authenticated. For non-GET requests, send a 401 instead because users can't be redirected back.
   // Also send a 401 if an Authorization header is present to facilitate API error handling.
@@ -268,7 +304,7 @@ exports.authnFailure = (hookName, {req, res}) => {
 };
 
 exports.preAuthorize = (hookName, {req}) => {
-  if (oidcClient == null) return;
+  if (oidcConfig == null) return;
   if (req.path.startsWith(ep(''))) return true;
   return;
 };
