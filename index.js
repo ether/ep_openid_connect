@@ -52,6 +52,15 @@ const validSettings = new Ajv().compile({
 const ep = (endpoint) => `/ep_openid_connect/${endpoint}`;
 const endpointUrl = (endpoint) => new URL(ep(endpoint).substr(1), settings.base_url).toString();
 
+const callbackUrlFromRequest = (req) => {
+  const callbackUrl = new URL(endpointUrl('callback'));
+  const requestUrl = new URL(req.originalUrl || req.url, settings.base_url);
+  for (const [key, value] of requestUrl.searchParams) {
+    callbackUrl.searchParams.append(key, value);
+  }
+  return callbackUrl;
+};
+
 const validateSubClaim = (sub) => {
   if (typeof sub !== 'string' || // 'sub' claim must exist as a string per OIDC spec.
       sub === '' || // Empty string doesn't make sense.
@@ -82,8 +91,8 @@ const discoverConfig = async (issuerUrl, clientId, clientAuth) => {
   // openid-client@6 rejects http:// issuers by default; opt back in for
   // localhost / private-network providers (matches v5 behaviour).
   const options = url.protocol === 'http:'
-      ? {execute: [oidc.allowInsecureRequests]}
-      : undefined;
+    ? {execute: [oidc.allowInsecureRequests]}
+    : undefined;
   try {
     return await oidc.discovery(url, clientId, undefined, clientAuth, options);
   } catch (err) {
@@ -186,8 +195,7 @@ exports.expressCreateServer = (hookName, {app}) => {
       }
       const oidcSession = req.session.ep_openid_connect || {};
       if (oidcSession.callbackChecks == null) throw new Error('missing authentication checks');
-      const currentUrl = new URL(req.originalUrl || req.url, settings.base_url);
-      const tokens = await oidc.authorizationCodeGrant(oidcConfig, currentUrl, {
+      const tokens = await oidc.authorizationCodeGrant(oidcConfig, callbackUrlFromRequest(req), {
         expectedNonce: oidcSession.callbackChecks.nonce,
         expectedState: oidcSession.callbackChecks.state,
         pkceCodeVerifier: oidcSession.callbackChecks.code_verifier,
@@ -326,6 +334,7 @@ exports.preAuthorize = (hookName, {req}) => {
 };
 
 exports.exportedForTestingOnly = {
+  callbackUrlFromRequest,
   defaultSettings,
   validSettings,
 };

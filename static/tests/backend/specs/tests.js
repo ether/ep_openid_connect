@@ -113,6 +113,16 @@ describe(__filename, function () {
         });
   });
 
+  it('callback URL uses configured base URL with request query parameters', async function () {
+    const callbackUrl = epOpenidConnect.exportedForTestingOnly.callbackUrlFromRequest({
+      originalUrl: '/ep_openid_connect/callback?code=the_code&state=the_state',
+    });
+    const expectedUrl = new URL('/ep_openid_connect/callback', pluginSettings.base_url);
+    expectedUrl.searchParams.set('code', 'the_code');
+    expectedUrl.searchParams.set('state', 'the_state');
+    assert.equal(callbackUrl.toString(), expectedUrl.toString());
+  });
+
   it('normalUser can create and edit a pad', async function () {
     const padId = common.randomString();
     const url = new URL(`/p/${padId}`, common.baseUrl).toString();
