@@ -10,6 +10,7 @@ for (const level of ['debug', 'info', 'warn', 'error']) {
 const defaultSettings = {
   prohibited_usernames: ['admin', 'guest'],
   scope: ['openid'],
+  token_endpoint_auth_method: 'client_secret_basic',
   user_properties: {},
 };
 let settings;
@@ -33,6 +34,7 @@ const validSettings = new Ajv().compile({
     issuer_metadata: {},
     prohibited_usernames: {elements: {type: 'string'}},
     scope: {elements: {type: 'string'}},
+    token_endpoint_auth_method: {enum: ['client_secret_basic', 'client_secret_post']},
     user_properties: {values: {
       optionalProperties: {
         claim: {type: 'string'},
@@ -100,11 +102,25 @@ const discoverConfig = async (issuerUrl, clientId, clientAuth) => {
   }
 };
 
+const getClientAuth = (settings) => {
+  switch (settings.token_endpoint_auth_method) {
+    case 'client_secret_basic':
+      // eslint-disable-next-line new-cap
+      return oidc.ClientSecretBasic(settings.client_secret);
+    case 'client_secret_post':
+      // eslint-disable-next-line new-cap
+      return oidc.ClientSecretPost(settings.client_secret);
+    default:
+      throw new Error(
+          `Unsupported token endpoint auth method: ${settings.token_endpoint_auth_method}`);
+  }
+};
+
 const buildConfig = async (settings) => {
   // openid-client@5 defaulted the token endpoint auth method to
   // `client_secret_basic`; v6 defaults to `client_secret_post`. Pin the
-  // method explicitly so existing IdP registrations keep working.
-  const clientAuth = oidc.ClientSecretBasic(settings.client_secret);
+  // default method explicitly so existing IdP registrations keep working.
+  const clientAuth = getClientAuth(settings);
   if (settings.issuer) {
     const config =
         await discoverConfig(settings.issuer, settings.client_id, clientAuth);
