@@ -125,6 +125,31 @@ describe(__filename, function () {
     assert.equal(msg.data.readonly, false);
   });
 
+  describe('token_endpoint_auth_method', function () {
+    for (const tokenEndpointAuthMethod of ['client_secret_basic', 'client_secret_post']) {
+      it(`supports ${tokenEndpointAuthMethod}`, async function () {
+        await epOpenidConnect.loadSettings('loadSettings', {settings: {ep_openid_connect: {
+          ...pluginSettings,
+          token_endpoint_auth_method: tokenEndpointAuthMethod,
+        }}});
+        const padId = common.randomString();
+        const url = new URL(`/p/${padId}`, common.baseUrl).toString();
+        const res = await login(agent, issuer, url, 'normalUser');
+        assert.equal(res.request.url, url);
+        assert.equal(res.status, 200);
+      });
+    }
+
+    it('rejects unsupported methods', async function () {
+      await epOpenidConnect.loadSettings('loadSettings', {settings: {ep_openid_connect: {
+        ...pluginSettings,
+        token_endpoint_auth_method: 'unsupported',
+      }}});
+      await agent.get(new URL('/ep_openid_connect/login', common.baseUrl))
+          .expect(401);
+    });
+  });
+
   it('noCreate user is unable to create a pad', async function () {
     const padId = common.randomString();
     const url = new URL(`/p/${padId}`, common.baseUrl).toString();
