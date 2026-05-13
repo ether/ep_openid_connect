@@ -190,8 +190,8 @@ provides suitable claims:
   },
 ```
 
-The `role` config sets the property to `true` if the role is found in the `roles`
-claim array.
+The `role` config sets the property to the string `"true"` if the role is found
+in the `roles` claim array.
 
 To avoid breaking assumptions made by Etherpad, the `username` property cannot
 be altered via the `user_properties` setting.
