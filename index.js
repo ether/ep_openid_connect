@@ -10,7 +10,6 @@ for (const level of ['debug', 'info', 'warn', 'error']) {
 const defaultSettings = {
   prohibited_usernames: ['admin', 'guest'],
   scope: ['openid'],
-  token_endpoint_auth_method: 'client_secret_basic',
   user_properties: {},
 };
 let settings;
@@ -78,7 +77,41 @@ const isHttp = (urlString) => {
   }
 };
 
-const discoverConfig = async (issuerUrl, clientId, clientAuth) => {
+// Pick the token endpoint auth method to use, given the IdP's advertised
+// `token_endpoint_auth_methods_supported` and any explicit override from
+// settings. Pure; exported for unit testing.
+//
+// Preference order when no override is set:
+//   1. `client_secret_post` if the IdP advertises it (matches openid-client@6's
+//      own default and works with every public IdP we've tested — notably
+//      GitLab.com, which rejects `client_secret_basic` at the token endpoint
+//      even though it lists it in discovery).
+//   2. `client_secret_basic` if the IdP advertises only that.
+//   3. `client_secret_basic` if the IdP advertises nothing we recognise (RFC
+//      8414 §2 says the absence of the field defaults to `client_secret_basic`).
+const pickAuthMethod = (supported, override) => {
+  if (override) return override;
+  if (Array.isArray(supported)) {
+    if (supported.includes('client_secret_post')) return 'client_secret_post';
+    if (supported.includes('client_secret_basic')) return 'client_secret_basic';
+  }
+  return 'client_secret_basic';
+};
+
+const clientAuthFor = (method, secret) => {
+  switch (method) {
+    case 'client_secret_basic':
+      // eslint-disable-next-line new-cap
+      return oidc.ClientSecretBasic(secret);
+    case 'client_secret_post':
+      // eslint-disable-next-line new-cap
+      return oidc.ClientSecretPost(secret);
+    default:
+      throw new Error(`Unsupported token endpoint auth method: ${method}`);
+  }
+};
+
+const fetchServerMetadata = async (issuerUrl, clientId) => {
   const url = new URL(issuerUrl);
   // https://openid.net/specs/openid-connect-discovery-1_0.html#IssuerDiscovery says that the URI
   // must not have query or fragment components.
@@ -94,7 +127,13 @@ const discoverConfig = async (issuerUrl, clientId, clientAuth) => {
     ? {execute: [oidc.allowInsecureRequests]}
     : undefined;
   try {
-    return await oidc.discovery(url, clientId, undefined, clientAuth, options);
+    // Discovery fetches the .well-known/openid-configuration document. The
+    // clientAuthentication argument is irrelevant for that HTTP request — it
+    // only matters when the Configuration is later used to exchange a code
+    // for a token — so we can pass `undefined` here and bind the real method
+    // below once we know what the IdP supports.
+    const tempConfig = await oidc.discovery(url, clientId, undefined, undefined, options);
+    return tempConfig.serverMetadata();
   } catch (err) {
     // The URL used to get the issuer metadata doesn't exactly follow RFC 8615; see:
     // https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderConfig
@@ -111,36 +150,30 @@ const discoverConfig = async (issuerUrl, clientId, clientAuth) => {
   }
 };
 
-const getClientAuth = (settings) => {
-  switch (settings.token_endpoint_auth_method) {
-    case 'client_secret_basic':
-      // eslint-disable-next-line new-cap
-      return oidc.ClientSecretBasic(settings.client_secret);
-    case 'client_secret_post':
-      // eslint-disable-next-line new-cap
-      return oidc.ClientSecretPost(settings.client_secret);
-    default:
-      throw new Error(
-          `Unsupported token endpoint auth method: ${settings.token_endpoint_auth_method}`);
-  }
-};
-
 const buildConfig = async (settings) => {
-  // openid-client@5 defaulted the token endpoint auth method to
-  // `client_secret_basic`; v6 defaults to `client_secret_post`. Pin the
-  // default method explicitly so existing IdP registrations keep working.
-  const clientAuth = getClientAuth(settings);
+  // Resolve the server metadata (either via discovery or from the inline
+  // `issuer_metadata` blob) BEFORE choosing an auth method, so we can pick
+  // one the IdP actually advertises.
+  let serverMetadata;
+  let phaseLog;
   if (settings.issuer) {
-    const config =
-        await discoverConfig(settings.issuer, settings.client_id, clientAuth);
-    logger.info('OpenID Connect Discovery complete.');
-    return config;
+    serverMetadata = await fetchServerMetadata(settings.issuer, settings.client_id);
+    phaseLog = 'OpenID Connect Discovery complete.';
+  } else {
+    serverMetadata = settings.issuer_metadata;
+    phaseLog = 'Configured from issuer_metadata.';
   }
-  const config =
-      new oidc.Configuration(settings.issuer_metadata, settings.client_id, undefined, clientAuth);
-  if (isHttp(settings.issuer_metadata && settings.issuer_metadata.issuer)) {
+  const method = pickAuthMethod(
+      serverMetadata && serverMetadata.token_endpoint_auth_methods_supported,
+      settings.token_endpoint_auth_method);
+  const clientAuth = clientAuthFor(method, settings.client_secret);
+  const config = new oidc.Configuration(
+      serverMetadata, settings.client_id, undefined, clientAuth);
+  if (isHttp(serverMetadata && serverMetadata.issuer)) {
     oidc.allowInsecureRequests(config);
   }
+  const source = settings.token_endpoint_auth_method ? 'configured' : 'auto-picked';
+  logger.info(`${phaseLog} Token endpoint auth method: ${method} (${source}).`);
   return config;
 };
 
@@ -179,7 +212,6 @@ exports.loadSettings = async (hookName, {settings: {ep_openid_connect: s = {}}})
   if (!settings.base_url.endsWith('/')) settings.base_url += '/';
   logger.debug('Settings:', {...settings, client_secret: '********'});
   oidcConfig = await buildConfig(settings);
-  logger.info('Configured.');
 };
 
 exports.expressCreateServer = (hookName, {app}) => {
@@ -336,5 +368,6 @@ exports.preAuthorize = (hookName, {req}) => {
 exports.exportedForTestingOnly = {
   callbackUrlFromRequest,
   defaultSettings,
+  pickAuthMethod,
   validSettings,
 };
