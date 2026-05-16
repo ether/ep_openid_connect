@@ -49,11 +49,14 @@ Etherpad's `requireAuthentication` setting must be `true`.
 * `client_id` (required): The OAuth2 client ID issued by the identity provider.
 * `client_secret` (required): The OAuth2 client secret issued by the identity
   provider.
-* `token_endpoint_auth_method` (optional; defaults to `client_secret_basic`):
-  Client authentication method to use for token endpoint requests. Supported
-  values are `client_secret_basic` and `client_secret_post`. Use
-  `client_secret_post` if your identity provider expects the client secret in
-  the token request body instead of the HTTP `Authorization` header.
+* `token_endpoint_auth_method` (optional; auto-detected by default): Client
+  authentication method to use for token endpoint requests. Supported values
+  are `client_secret_basic` and `client_secret_post`. When not set, the plugin
+  inspects the identity provider's discovery document
+  (`token_endpoint_auth_methods_supported`) and picks `client_secret_post` if
+  the provider advertises it, otherwise `client_secret_basic`. Set this
+  explicitly to force a specific method — for example, if your identity
+  provider advertises both but your client is registered for only one.
 * `base_url` (required): The public base Etherpad URL. When registering Etherpad
   with your identity provider, the redirect URL (a.k.a. callback URL) is this
   base URL plus `/ep_openid_connect/callback`.
