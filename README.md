@@ -60,6 +60,14 @@ Etherpad's `requireAuthentication` setting must be `true`.
 * `base_url` (required): The public base Etherpad URL. When registering Etherpad
   with your identity provider, the redirect URL (a.k.a. callback URL) is this
   base URL plus `/ep_openid_connect/callback`.
+* `ca` (optional): Custom Certificate Authority bundle for verifying TLS
+  connections to the identity provider — useful when the provider's
+  certificate is signed by a private or internal CA rather than a public
+  one. The value can be either a filesystem path to a PEM file or the PEM
+  content itself (recognised by a leading `-----BEGIN`). If you control the
+  Node startup environment you may instead set the
+  [`NODE_EXTRA_CA_CERTS`](https://nodejs.org/api/cli.html#node_extra_ca_certsfile)
+  environment variable, which has the same effect for the whole process.
 * `scope` (optional; defaults to `["openid"]`): List of OAuth2 scope strings.
 * `prohibited_usernames` (optional; defaults to `["admin", "guest"]`): List of
   strings that will trigger an authentication error if any match the `sub`

@@ -24,7 +24,8 @@
   "homepage": "https://github.com/ether/ep_openid_connect#readme",
   "dependencies": {
     "ajv": "^8.20.0",
-    "openid-client": "^6.8.4"
+    "openid-client": "^6.8.4",
+    "undici": "^8.3.0"
   },
   "devDependencies": {
     "eslint": "^8.57.1",
