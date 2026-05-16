@@ -1,6 +1,8 @@
 'use strict';
 
 const Ajv = require('ajv/dist/jtd');
+const fs = require('fs');
+const undici = require('undici');
 const {URL} = require('url');
 
 let logger = {};
@@ -29,6 +31,14 @@ const validSettings = new Ajv().compile({
     client_secret: {type: 'string'},
   },
   optionalProperties: {
+    // Path to a PEM-encoded certificate authority bundle (or the PEM
+    // content itself, recognised by a leading `-----BEGIN`). Used to verify
+    // TLS connections to identity providers that present a certificate
+    // signed by a private/internal CA. Operators who control the Node
+    // process can equivalently set NODE_EXTRA_CA_CERTS — this option is for
+    // settings.json-driven deployments where touching the Node startup
+    // command isn't an option.
+    ca: {type: 'string'},
     issuer: {type: 'string'},
     issuer_metadata: {},
     prohibited_usernames: {elements: {type: 'string'}},
@@ -77,6 +87,24 @@ const isHttp = (urlString) => {
   }
 };
 
+// Load a CA bundle from either a path or an inline PEM string. Returns the
+// PEM content as a string, or `null` for an empty/missing setting.
+// Exported for unit testing.
+const loadCaBundle = (caSetting) => {
+  if (typeof caSetting !== 'string' || !caSetting) return null;
+  if (caSetting.startsWith('-----BEGIN ')) return caSetting;
+  return fs.readFileSync(caSetting, 'utf8');
+};
+
+// Build a `fetch` implementation that trusts the given PEM-encoded CA
+// bundle, suitable for assigning to `config[oidc.customFetch]`. Each call
+// creates a single shared undici dispatcher so HTTP connections to the IdP
+// can be reused across discovery, token-exchange, and userinfo calls.
+const buildCustomFetch = (caBundle) => {
+  const dispatcher = new undici.Agent({connect: {ca: caBundle}});
+  return (url, options) => undici.fetch(url, {...options, dispatcher});
+};
+
 // Pick the token endpoint auth method to use, given the IdP's advertised
 // `token_endpoint_auth_methods_supported` and any explicit override from
 // settings. Pure; exported for unit testing.
@@ -111,7 +139,7 @@ const clientAuthFor = (method, secret) => {
   }
 };
 
-const fetchServerMetadata = async (issuerUrl, clientId) => {
+const fetchServerMetadata = async (issuerUrl, clientId, customFetch) => {
   const url = new URL(issuerUrl);
   // https://openid.net/specs/openid-connect-discovery-1_0.html#IssuerDiscovery says that the URI
   // must not have query or fragment components.
@@ -123,16 +151,22 @@ const fetchServerMetadata = async (issuerUrl, clientId) => {
   }
   // openid-client@6 rejects http:// issuers by default; opt back in for
   // localhost / private-network providers (matches v5 behaviour).
-  const options = url.protocol === 'http:'
-    ? {execute: [oidc.allowInsecureRequests]}
-    : undefined;
+  const options = {};
+  if (url.protocol === 'http:') options.execute = [oidc.allowInsecureRequests];
+  // `customFetch` must be set on the options bag (not on `execute`) so that
+  // discovery's OWN HTTPS request to /.well-known/openid-configuration uses
+  // it. `execute` callbacks only run AFTER discovery finishes.
+  if (customFetch != null) options[oidc.customFetch] = customFetch;
   try {
     // Discovery fetches the .well-known/openid-configuration document. The
     // clientAuthentication argument is irrelevant for that HTTP request — it
     // only matters when the Configuration is later used to exchange a code
     // for a token — so we can pass `undefined` here and bind the real method
     // below once we know what the IdP supports.
-    const tempConfig = await oidc.discovery(url, clientId, undefined, undefined, options);
+    const tempConfig = await oidc.discovery(
+        url, clientId, undefined, undefined,
+        Object.keys(options).length || Object.getOwnPropertySymbols(options).length
+          ? options : undefined);
     return tempConfig.serverMetadata();
   } catch (err) {
     // The URL used to get the issuer metadata doesn't exactly follow RFC 8615; see:
@@ -151,13 +185,22 @@ const fetchServerMetadata = async (issuerUrl, clientId) => {
 };
 
 const buildConfig = async (settings) => {
+  // If the operator gave us a custom CA bundle, build a fetch that trusts
+  // it; otherwise leave the default fetch in place. We deliberately build
+  // the customFetch BEFORE discovery so the discovery HTTP call itself
+  // uses the trusted CA — the configured IdP is typically the same host
+  // that serves the well-known document.
+  const caBundle = loadCaBundle(settings.ca);
+  const customFetch = caBundle ? buildCustomFetch(caBundle) : null;
+
   // Resolve the server metadata (either via discovery or from the inline
   // `issuer_metadata` blob) BEFORE choosing an auth method, so we can pick
   // one the IdP actually advertises.
   let serverMetadata;
   let phaseLog;
   if (settings.issuer) {
-    serverMetadata = await fetchServerMetadata(settings.issuer, settings.client_id);
+    serverMetadata =
+        await fetchServerMetadata(settings.issuer, settings.client_id, customFetch);
     phaseLog = 'OpenID Connect Discovery complete.';
   } else {
     serverMetadata = settings.issuer_metadata;
@@ -172,8 +215,10 @@ const buildConfig = async (settings) => {
   if (isHttp(serverMetadata && serverMetadata.issuer)) {
     oidc.allowInsecureRequests(config);
   }
+  if (customFetch != null) config[oidc.customFetch] = customFetch;
   const source = settings.token_endpoint_auth_method ? 'configured' : 'auto-picked';
-  logger.info(`${phaseLog} Token endpoint auth method: ${method} (${source}).`);
+  logger.info(`${phaseLog} Token endpoint auth method: ${method} (${source})` +
+      (caBundle ? ' with custom CA bundle.' : '.'));
   return config;
 };
 
@@ -368,6 +413,7 @@ exports.preAuthorize = (hookName, {req}) => {
 exports.exportedForTestingOnly = {
   callbackUrlFromRequest,
   defaultSettings,
+  loadCaBundle,
   pickAuthMethod,
   validSettings,
 };
