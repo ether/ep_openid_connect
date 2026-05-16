@@ -37,6 +37,11 @@ const validSettings = new Ajv().compile({
     user_properties: {values: {
       optionalProperties: {
         claim: {type: 'string'},
+        // `role` looks the named string up inside the `roles` claim's array
+        // value. Used by IdPs like Azure/Entra that surface role assignments
+        // via a single `roles` array claim instead of a dedicated claim per
+        // property. Set the property to `true` when the role is present.
+        role: {type: 'string'},
         // `default` is assigned verbatim to `req.session.user[propName]`,
         // so any JSON value (boolean for is_admin/readOnly/canCreate,
         // number, string, …) is fine. Use the JTD empty form so we don't
@@ -311,6 +316,11 @@ exports.authenticate = (hookName, {req, res, users}) => {
       delete req.session.user[propName];
     } else if (descriptor.claim != null && descriptor.claim in userinfo) {
       req.session.user[propName] = userinfo[descriptor.claim];
+    } else if (descriptor.role != null && Array.isArray(userinfo.roles) &&
+               userinfo.roles.includes(descriptor.role)) {
+      // Boolean `true` (not the string `"true"`) so that the value works
+      // directly with Etherpad's is_admin/readOnly/canCreate checks.
+      req.session.user[propName] = true;
     } else if ('default' in descriptor && !(propName in req.session.user)) {
       req.session.user[propName] = descriptor.default;
     }

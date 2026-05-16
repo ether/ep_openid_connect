@@ -31,6 +31,12 @@ class OidcProvider {
           'etherpad_canCreate',
           'name',
           'prop',
+          // `roles` is an array claim — Azure/Entra and Keycloak surface
+          // role assignments this way. The test account synthesises a
+          // `roles` array when the sub contains "role" (see findAccount
+          // below) so we can drive user_properties.X.role tests without
+          // disturbing the other test users' claim shape.
+          'roles',
         ],
       },
       cookies: {
@@ -49,6 +55,13 @@ class OidcProvider {
           etherpad_canCreate:
               sub.includes('admin') || (!sub.includes('readOnly') && !sub.includes('noCreate')),
           ...(sub === 'claimNull' ? {prop: null} : sub === 'claimVal' ? {prop: 'claimValue'} : {}),
+          // Synthesise a `roles` claim only for usernames that explicitly opt
+          // in via the "role" substring, so the other user_properties tests
+          // are unaffected. `emptyRoles` gets an empty array to exercise the
+          // "no matching role" path.
+          ...(sub.includes('emptyRoles') ? {roles: []}
+              : sub.includes('role') ? {roles: ['etherpad_admin', 'unrelated_role']}
+              : {}),
         }),
       }),
       jwks: {
