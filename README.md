@@ -111,6 +111,13 @@ describes how the property's value is obtained:
   * If the descriptor object has a `claim` property that names an existing
     OpenID Connect claim, the value is set to the value of the claim. (If there
     is no such claim, `claim` has no effect.)
+  * If the descriptor object has a `role` property and the userinfo's `roles`
+    claim is an array containing that role string, the value is set to boolean
+    `true`. Useful for identity providers such as Azure/Entra ID and Keycloak
+    that publish role assignments through a single `roles` array claim rather
+    than a dedicated claim per property. Has no effect if the `roles` claim is
+    missing or doesn't include the named role. The `claim` rule is evaluated
+    first when both are present.
   * If the descriptor object has a `default` property and the account object
     property would otherwise be unset, the property is set to the given value.
     (Note that a property set to `undefined` is not the same as unset.)
@@ -194,6 +201,20 @@ provides suitable claims:
       "is_admin": {"claim": "etherpad_is_admin"},
       "readOnly": {"claim": "etherpad_readOnly"},
       "canCreate": {"claim": "etherpad_canCreate"}
+    }
+  },
+```
+
+For identity providers that surface role assignments through a `roles` array
+claim instead (Azure/Entra ID, Keycloak, …), use `role`:
+
+```json
+  "ep_openid_connect": {
+    "scope": ["openid", "profile", "roles"],
+    "user_properties": {
+      "is_admin": {"role": "etherpad_admin"},
+      "readOnly": {"role": "etherpad_readonly", "default": false},
+      "canCreate": {"role": "etherpad_writer", "default": true}
     }
   },
 ```
