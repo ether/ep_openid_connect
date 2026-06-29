@@ -25,8 +25,8 @@ importers:
         specifier: ^4.0.5
         version: 4.0.5(eslint@8.57.1)(typescript@6.0.3)
       oidc-provider:
-        specifier: ^9.8.5
-        version: 9.8.5
+        specifier: ^9.8.6
+        version: 9.8.6
       supertest:
         specifier: ^6.3.4
         version: 6.3.4
@@ -1118,8 +1118,8 @@ packages:
   ms@2.1.3:
     resolution: {integrity: sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==}
 
-  nanoid@5.1.11:
-    resolution: {integrity: sha512-v+KEsUv2ps74PaSKv0gHTxTCgMXOIfBEbaqa6w6ISIGC7ZsvHN4N9oJ8d4cmf0n5oTzQz2SLmThbQWhjd/8eKg==}
+  nanoid@5.1.16:
+    resolution: {integrity: sha512-kVrnsrJqMR8+oLJnGEmSWw9BivK5mt7H3FZatVRjrc5wGqFYuBxX1yG7+A7Gi5AefkX6t/oCkizcQgpu0cY1dQ==}
     engines: {node: ^18 || >=20}
     hasBin: true
 
@@ -1165,8 +1165,8 @@ packages:
     resolution: {integrity: sha512-gXah6aZrcUxjWg2zR2MwouP2eHlCBzdV4pygudehaKXSGW4v2AsRQUK+lwwXhii6KFZcunEnmSUoYp5CXibxtA==}
     engines: {node: '>= 0.4'}
 
-  oidc-provider@9.8.5:
-    resolution: {integrity: sha512-07Wqkea8jdfPI8GvbVwf9rMNNitLUzzDqPua7hWbqZreFNpfnlNVdqmllaripVmgDZS2tHHLYQYLW0Ay7yux9w==}
+  oidc-provider@9.8.6:
+    resolution: {integrity: sha512-jodnMKbwfMbV5qUFnbCxtnrdRztJJubJbw/7HTokIJSiHm1JT7pU4G83sD/bPkvZnFDdv5POB/kJU5uGG3ek4g==}
 
   on-finished@2.4.1:
     resolution: {integrity: sha512-oVlzkg3ENAhCk2zdv7IJwd/QUD4z2RxRwpkcGY8psCVcCYZNq4wYnVWALHM+brtuJjePWiYF/ClmuDr8Ch5+kg==}
@@ -2792,7 +2792,7 @@ snapshots:
 
   ms@2.1.3: {}
 
-  nanoid@5.1.11: {}
+  nanoid@5.1.16: {}
 
   natural-compare@1.4.0: {}
 
@@ -2847,7 +2847,7 @@ snapshots:
       define-properties: 1.2.1
       es-object-atoms: 1.1.1
 
-  oidc-provider@9.8.5:
+  oidc-provider@9.8.6:
     dependencies:
       '@koa/cors': 5.0.0
       '@koa/router': 15.6.0(koa@3.2.1)
@@ -2856,7 +2856,7 @@ snapshots:
       jose: 6.2.3
       jsesc: 3.1.0
       koa: 3.2.1
-      nanoid: 5.1.11
+      nanoid: 5.1.16
       quick-lru: 7.3.0
       raw-body: 3.0.2
     transitivePeerDependencies:
