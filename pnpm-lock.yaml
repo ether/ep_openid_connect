@@ -15,8 +15,8 @@ importers:
         specifier: ^6.8.4
         version: 6.8.4
       undici:
-        specifier: ^8.6.0
-        version: 8.6.0
+        specifier: ^8.7.0
+        version: 8.7.0
     devDependencies:
       eslint:
         specifier: ^8.57.1
@@ -1503,8 +1503,8 @@ packages:
     resolution: {integrity: sha512-nWJ91DjeOkej/TA8pXQ3myruKpKEYgqvpw9lz4OPHj/NWFNluYrjbz9j01CJ8yKQd2g4jFoOkINCTW2I5LEEyw==}
     engines: {node: '>= 0.4'}
 
-  undici@8.6.0:
-    resolution: {integrity: sha512-l2FlC6I510GawyEd1qgcE/okihKrzy+BRTEBlu6T0fdbM9m5yxtIH5Oa3ysRsH0zC4EhmWUEaSDsy2QngBeRlw==}
+  undici@8.7.0:
+    resolution: {integrity: sha512-N7iQtfyLhIMOFgQubvmLV26svHpO0bqKnAiWotTQCVKCmWrcGbBotPuW1x+xwYZ2VHdSTVUfPQQnlEt1/LouTQ==}
     engines: {node: '>=22.19.0'}
 
   unpipe@1.0.0:
@@ -3251,7 +3251,7 @@ snapshots:
       has-symbols: 1.1.0
       which-boxed-primitive: 1.1.1
 
-  undici@8.6.0: {}
+  undici@8.7.0: {}
 
   unpipe@1.0.0: {}
 
