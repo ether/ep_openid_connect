@@ -25,8 +25,8 @@ importers:
         specifier: ^4.0.5
         version: 4.0.5(eslint@8.57.1(supports-color@7.2.0))(supports-color@7.2.0)(typescript@7.0.2)
       oidc-provider:
-        specifier: ^9.11.4
-        version: 9.11.4(supports-color@7.2.0)
+        specifier: ^9.11.5
+        version: 9.11.5(supports-color@7.2.0)
       supertest:
         specifier: ^6.3.4
         version: 6.3.4(supports-color@7.2.0)
@@ -1262,8 +1262,8 @@ packages:
     resolution: {integrity: sha512-gXah6aZrcUxjWg2zR2MwouP2eHlCBzdV4pygudehaKXSGW4v2AsRQUK+lwwXhii6KFZcunEnmSUoYp5CXibxtA==}
     engines: {node: '>= 0.4'}
 
-  oidc-provider@9.11.4:
-    resolution: {integrity: sha512-OyIl6B0oKrFjGPtcMYZovLpIYJGyrqBHVY7tLY21UZdv9xENgTX/awBn/s1grsqqNH3Oj8yASfLKkeWLex/nQw==}
+  oidc-provider@9.11.5:
+    resolution: {integrity: sha512-Q8pqzhtQd42NyUjgxpWqwqX50/YPJ2i1YmhxSEYGYiZit7C1FRG/8RnnSetGzsj5sTuOC4bQbnUeqmmUM1j1fw==}
 
   on-finished@2.4.1:
     resolution: {integrity: sha512-oVlzkg3ENAhCk2zdv7IJwd/QUD4z2RxRwpkcGY8psCVcCYZNq4wYnVWALHM+brtuJjePWiYF/ClmuDr8Ch5+kg==}
@@ -2966,7 +2966,7 @@ snapshots:
       define-properties: 1.2.1
       es-object-atoms: 1.1.1
 
-  oidc-provider@9.11.4(supports-color@7.2.0):
+  oidc-provider@9.11.5(supports-color@7.2.0):
     dependencies:
       debug: 4.4.3(supports-color@7.2.0)
       jose: 6.2.10
