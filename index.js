@@ -222,8 +222,8 @@ const buildConfig = async (settings) => {
   }
   if (customFetch != null) config[oidc.customFetch] = customFetch;
   const source = settings.token_endpoint_auth_method ? 'configured' : 'auto-picked';
-  logger.info(`${phaseLog} Token endpoint auth method: ${method} (${source})` +
-      (caBundle ? ' with custom CA bundle.' : '.'));
+  const caNote = caBundle ? ' with custom CA bundle.' : '.';
+  logger.info(`${phaseLog} Token endpoint auth method: ${method} (${source})${caNote}`);
   return config;
 };
 

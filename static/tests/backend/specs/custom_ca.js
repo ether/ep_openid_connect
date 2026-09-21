@@ -11,7 +11,7 @@
 const Provider = require('oidc-provider').default;
 const MemoryAdapter = require('oidc-provider/lib/adapters/memory_adapter').default;
 const assert = require('assert').strict;
-const child_process = require('child_process');
+const childProcess = require('child_process');
 const common = require('ep_etherpad-lite/tests/backend/common');
 const epOpenidConnect = require('../../../../index');
 const fs = require('fs');
@@ -21,6 +21,17 @@ const path = require('path');
 const settings = require('ep_etherpad-lite/node/utils/Settings');
 const util = require('util');
 
+// The TLS failure surfaces with different wording depending on the Node and
+// undici versions in play, so match any of the known phrasings.
+const TLS_ERROR_RE = new RegExp([
+  'self-signed',
+  'self signed',
+  'unable to verify',
+  'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
+  'CERT',
+  'TLS',
+].join('|'), 'i');
+
 // Generate a self-signed cert valid for localhost via the OpenSSL CLI.
 // Using a CLI avoids pulling in `selfsigned`+`@peculiar/x509`+`node-forge`
 // as devDependencies just for one test, and `openssl` is available on every
@@ -29,15 +40,22 @@ const generateSelfSignedCert = () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ep-openid-cert-'));
   const keyPath = path.join(dir, 'key.pem');
   const certPath = path.join(dir, 'cert.pem');
-  child_process.execFileSync('openssl', [
-    'req', '-x509',
-    '-newkey', 'rsa:2048',
+  childProcess.execFileSync('openssl', [
+    'req',
+    '-x509',
+    '-newkey',
+    'rsa:2048',
     '-nodes',
-    '-keyout', keyPath,
-    '-out', certPath,
-    '-days', '1',
-    '-subj', '/CN=localhost',
-    '-addext', 'subjectAltName=DNS:localhost,IP:127.0.0.1',
+    '-keyout',
+    keyPath,
+    '-out',
+    certPath,
+    '-days',
+    '1',
+    '-subj',
+    '/CN=localhost',
+    '-addext',
+    'subjectAltName=DNS:localhost,IP:127.0.0.1',
   ], {stdio: 'pipe'});
   return {
     dir,
@@ -156,13 +174,13 @@ describe(__filename, function () {
     });
   });
 
-  beforeEach(function () {
+  beforeEach(async function () {
     settings.requireAuthentication = true;
     settings.requireAuthorization = false;
     settings.users = {};
   });
 
-  afterEach(function () {
+  afterEach(async function () {
     settings.requireAuthentication = backup.settings.requireAuthentication;
     settings.requireAuthorization = backup.settings.requireAuthorization;
     settings.users = backup.settings.users;
@@ -171,27 +189,31 @@ describe(__filename, function () {
   after(async function () {
     if (provider != null) await provider.stop();
     provider = null;
-    if (pems && pems.dir) try { fs.rmSync(pems.dir, {recursive: true, force: true}); } catch (_) { /* ignore */ }
+    if (pems && pems.dir) {
+      try {
+        fs.rmSync(pems.dir, {recursive: true, force: true});
+      } catch (_) { /* ignore */ }
+    }
   });
 
   describe('loadCaBundle', function () {
     const {loadCaBundle} = epOpenidConnect.exportedForTestingOnly;
 
-    it('returns null for an empty / missing value', function () {
+    it('returns null for an empty / missing value', async function () {
       assert.equal(loadCaBundle(undefined), null);
       assert.equal(loadCaBundle(null), null);
       assert.equal(loadCaBundle(''), null);
     });
 
-    it('returns inline PEM content unchanged', function () {
+    it('returns inline PEM content unchanged', async function () {
       assert.equal(loadCaBundle(pems.cert), pems.cert);
     });
 
-    it('reads PEM content from a path', function () {
+    it('reads PEM content from a path', async function () {
       assert.equal(loadCaBundle(pems.certPath), pems.cert);
     });
 
-    it('throws on a non-existent path', function () {
+    it('throws on a non-existent path', async function () {
       assert.throws(() => loadCaBundle('/this/path/does/not/exist.pem'),
           /ENOENT|no such file/);
     });
@@ -221,7 +243,7 @@ describe(__filename, function () {
               if (e.code) messages.push(String(e.code));
             }
             const joined = messages.join(' | ');
-            return /self-signed|self signed|unable to verify|UNABLE_TO_VERIFY_LEAF_SIGNATURE|CERT|TLS/i.test(joined);
+            return TLS_ERROR_RE.test(joined);
           });
     });
 

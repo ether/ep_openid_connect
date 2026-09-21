@@ -43,7 +43,7 @@ describe(__filename, function () {
     };
   });
 
-  beforeEach(function () {
+  beforeEach(async function () {
     agent = supertest.agent('');
     settings.requireAuthentication = true;
     settings.requireAuthorization = false;
