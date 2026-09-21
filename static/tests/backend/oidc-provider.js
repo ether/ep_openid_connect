@@ -60,8 +60,8 @@ class OidcProvider {
           // are unaffected. `emptyRoles` gets an empty array to exercise the
           // "no matching role" path.
           ...(sub.includes('emptyRoles') ? {roles: []}
-              : sub.includes('role') ? {roles: ['etherpad_admin', 'unrelated_role']}
-              : {}),
+          : sub.includes('role') ? {roles: ['etherpad_admin', 'unrelated_role']}
+          : {}),
         }),
       }),
       jwks: {

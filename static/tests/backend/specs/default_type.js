@@ -10,7 +10,7 @@ const baseSettings = () => ({
 });
 
 describe(__filename, function () {
-  it('still accepts a string default on user_properties', function () {
+  it('still accepts a string default on user_properties', async function () {
     const s = {
       ...baseSettings(),
       user_properties: {displayname: {claim: 'name', default: 'Anon'}},
@@ -19,7 +19,7 @@ describe(__filename, function () {
         `expected valid settings, got errors: ${JSON.stringify(validSettings.errors)}`);
   });
 
-  it('accepts a boolean default on user_properties (regression for #100)', function () {
+  it('accepts a boolean default on user_properties (regression for #100)', async function () {
     const s = {
       ...baseSettings(),
       user_properties: {
@@ -29,17 +29,17 @@ describe(__filename, function () {
       },
     };
     assert(validSettings(s),
-        `expected boolean defaults to validate, got errors: ` +
+        'expected boolean defaults to validate, got errors: ' +
         `${JSON.stringify(validSettings.errors)}`);
   });
 
-  it('accepts a numeric default on user_properties', function () {
+  it('accepts a numeric default on user_properties', async function () {
     const s = {
       ...baseSettings(),
       user_properties: {quota: {default: 100}},
     };
     assert(validSettings(s),
-        `expected numeric defaults to validate, got errors: ` +
+        'expected numeric defaults to validate, got errors: ' +
         `${JSON.stringify(validSettings.errors)}`);
   });
 });
